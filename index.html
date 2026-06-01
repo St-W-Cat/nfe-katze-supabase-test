@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>NfE-Rechner Katze</title>
-  <!-- Version: supabase-v3-firebase-layout -->
+  <!-- Version: supabase-version4-resultate-und-speichern-fix -->
   <style>
 
     :root {
@@ -361,7 +361,7 @@
     }
     .error { background: #fbe0e0; color: var(--red); }
     .notice { background: var(--soft); color: var(--accent-dark); }
-    .save-card { display: none; }
+    .save-card { display: block; }
     .save-card.visible { display: block; }
     .food-list-head {
       position: relative;
@@ -1406,7 +1406,7 @@
       <div id="rating" class="rating"></div>
     </section>
 
-    <section id="saveCard" class="card save-card">
+    <section id="saveCard" class="card save-card visible">
       <h2 id="saveTitle">Dieses Futter speichern</h2>
       <div class="save-grid">
         <div>
@@ -1580,7 +1580,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v3 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v4 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1834,6 +1834,29 @@
     poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(item.id) }));
   }
 
+  function ratingPawSvg() {
+    return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
+      + '<circle class="shape" cx="20" cy="22" r="8"></circle>'
+      + '<circle class="shape" cx="32" cy="16" r="8"></circle>'
+      + '<circle class="shape" cx="44" cy="22" r="8"></circle>'
+      + '<circle class="shape" cx="24" cy="36" r="7"></circle>'
+      + '<circle class="shape" cx="40" cy="36" r="7"></circle>'
+      + '<path class="shape" d="M19 48c3-11 23-11 26 0 2 8-8 10-13 5-5 5-15 3-13-5z"></path>'
+      + '</svg>';
+  }
+
+  function applyResultStyle(ratingClass) {
+    const dry = el("nfeDry");
+    if (dry) {
+      dry.className = "value " + (ratingClass === "high" ? "dry-high" : ratingClass === "mid" ? "dry-mid" : "dry-good");
+    }
+
+    const rating = el("rating");
+    if (rating) {
+      rating.className = "rating " + ratingClass;
+    }
+  }
+
   function calculate() {
     const protein = parseNumber("protein");
     const fett = parseNumber("fett");
@@ -1865,8 +1888,11 @@
 
     el("nfeDry").textContent = fmt(nfeDry);
     el("nfeFresh").textContent = fmt(nfeFresh);
-    el("rating").textContent = ratingText;
-    el("rating").className = "rating " + ratingClass;
+    el("rating").innerHTML = ratingPawSvg() + "<span>" + ratingText + "</span>";
+    applyResultStyle(ratingClass);
+
+    const saveCard = el("saveCard");
+    if (saveCard) saveCard.classList.add("visible");
 
     saveLastValues();
     return true;
@@ -1875,12 +1901,12 @@
     try {
       const payload = {};
       fields.forEach(id => payload[id] = el(id).value);
-      localStorage.setItem("nfe_supabase_last_values_v3", JSON.stringify(payload));
+      localStorage.setItem("nfe_supabase_last_values_v4", JSON.stringify(payload));
     } catch (e) {}
   }
   function loadLastValues() {
     try {
-      const raw = localStorage.getItem("nfe_supabase_last_values_v3");
+      const raw = localStorage.getItem("nfe_supabase_last_values_v4");
       if (!raw) return;
       const payload = JSON.parse(raw);
       fields.forEach(id => { if (payload[id]) el(id).value = payload[id]; });
@@ -1888,7 +1914,7 @@
     } catch (e) {}
   }
   function clearLastValues() {
-    try { localStorage.removeItem("nfe_supabase_last_values_v3"); } catch (e) {}
+    try { localStorage.removeItem("nfe_supabase_last_values_v4"); } catch (e) {}
   }
   function collectCurrentFood(forceNew) {
     if (!calculate()) return null;
@@ -1974,7 +2000,8 @@
     ["brand", "sort", "packaging", "weight", "lifeAge"].forEach(id => el(id).value = "");
     el("nfeFresh").textContent = "–";
     el("nfeDry").textContent = "–";
-    el("rating").textContent = "";
+    el("nfeDry").className = "value";
+    el("rating").innerHTML = "";
     el("rating").className = "rating";
     currentResult = null;
     clearLastValues();
@@ -2372,7 +2399,7 @@
 
     list.innerHTML = "";
     if (!rows.length) {
-      list.innerHTML = '<div class="empty">Keine Einträge.</div>';
+      list.innerHTML = '<div class="empty">Noch keine Einträge in dieser Liste. Du kannst oben einen neuen Eintrag hinzufügen.</div>';
       return;
     }
     rows.forEach(row => {

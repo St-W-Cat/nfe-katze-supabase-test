@@ -1,4 +1,4 @@
-const CACHE_NAME = "nfe-katze-supabase-v3";
+const CACHE_NAME = "nfe-katze-supabase-v4";
 const ASSETS = [
   "./",
   "index.html",
