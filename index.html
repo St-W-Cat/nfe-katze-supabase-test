@@ -3,1024 +3,2785 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#8b5a2b">
-  <title>NfE Katze</title>
+  <meta name="theme-color" content="#8b5cf6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="NfE Katze">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="manifest.json">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Version: supabase-version2-design-naeher-an-firebase -->
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>NfE-Rechner Katze</title>
+  <!-- Version: supabase-v3-firebase-layout -->
   <style>
+
     :root {
-      --bg1: #fff7ef;
-      --bg2: #fffdf8;
+      --bg: #f3f8ff;
       --card: #ffffff;
-      --text: #2f241f;
-      --muted: #766b63;
-      --line: #ead9c8;
-      --brown: #8b5a2b;
-      --brown-dark: #6f431f;
-      --cream: #fffaf4;
-      --cream2: #f4eadf;
-      --blue-bg: #e2f3ff;
-      --blue: #1d5f8f;
-      --green-bg: #e3f6ec;
-      --green: #267a46;
-      --red-bg: #ffe7e7;
-      --red: #b3261e;
-      --yellow-bg: #fff3bf;
-      --yellow: #7c5b00;
-      --shadow: 0 12px 34px rgba(70, 43, 20, .12);
+      --text: #172033;
+      --muted: #647085;
+      --accent: #8b5cf6;
+      --accent-dark: #6d28d9;
+      --green: #18884f;
+      --orange: #c46a00;
+      --red: #c62828;
+      --line: #d8e5f5;
+      --soft: #f7f3ff;
     }
-
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(255, 237, 214, .9), transparent 34rem),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
+      background: linear-gradient(180deg, var(--bg), #ffffff);
       color: var(--text);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
+      padding: 20px 20px 40px;
     }
-
-    .wrap {
-      width: min(1040px, 100%);
-      margin: 0 auto;
-      padding: 14px 12px 80px;
-    }
-
-    header {
-      display: grid;
-      justify-items: center;
-      gap: 7px;
-      text-align: center;
-      padding: 8px 0 12px;
-    }
-
-    .logo {
-      width: min(230px, 74vw);
-      max-height: 130px;
-      object-fit: contain;
-      filter: drop-shadow(0 7px 12px rgba(90, 58, 28, .14));
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(25px, 7vw, 36px);
-      line-height: 1.05;
-      color: var(--brown-dark);
-      letter-spacing: -.02em;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .version-note {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--brown);
-      background: #fff3e4;
-      border: 1px solid #f0d7bd;
-      padding: 5px 9px;
-      border-radius: 999px;
-    }
-
+    .wrap { max-width: 560px; margin: 0 auto; }
     .card {
-      background: rgba(255,255,255,.96);
+      background: var(--card);
       border: 1px solid var(--line);
       border-radius: 24px;
-      padding: 14px;
-      margin: 12px 0;
-      box-shadow: var(--shadow);
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(20, 80, 160, .08);
+      margin-bottom: 14px;
     }
-
-    .card h2 {
-      margin: 0 0 11px;
-      font-size: 19px;
-      line-height: 1.2;
-      color: var(--brown-dark);
-    }
-
-    .topbar {
+    .title {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 10px;
+      margin: 0 0 8px;
       text-align: center;
     }
-
-    .auth-email {
-      font-weight: 950;
-      color: var(--brown-dark);
+    .icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #efe7ff;
+      overflow: hidden;
+      box-shadow: 0 3px 10px rgba(0,0,0,.08);
     }
-
-    .grid {
+    .icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    h1 {
+      margin: 0;
+      font-size: 29px;
+      line-height: 1.1;
+      text-align: center;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      text-align: center;
+    }
+    .grid, .save-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
-
-    .grid.three {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    @media (max-width: 720px) {
-      .grid, .grid.three {
-        grid-template-columns: 1fr;
-      }
-    }
-
+    .grid { margin-top: 14px; }
     label {
-      display: grid;
-      gap: 5px;
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 900;
+      display: block;
+      font-weight: 700;
+      margin-bottom: 5px;
+      font-size: 14px;
     }
-
-    input {
+    input, textarea {
       width: 100%;
-      border: 1px solid var(--line);
+      font-size: 22px;
+      padding: 14px;
       border-radius: 16px;
-      padding: 12px;
+      border: 1.5px solid var(--line);
       background: #fffdfb;
       color: var(--text);
-      font-size: 16px;
       outline: none;
+      font-family: inherit;
     }
-
-    input:focus {
-      border-color: #d8a35f;
-      box-shadow: 0 0 0 3px rgba(216,163,95,.18);
+    textarea {
+      min-height: 130px;
+      font-size: 14px;
+      line-height: 1.4;
+      resize: vertical;
     }
-
+    .save-card input,
+    .grid input {
+      font-size: 16px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      min-height: 42px;
+      line-height: 1.2;
+    }
+    .suggest-wrap {
+      display: grid;
+      grid-template-columns: 1fr 36px 40px;
+      gap: 7px;
+      align-items: center;
+    }
+    .suggest-btn,
+    .clear-field-btn {
+      height: 40px;
+      padding: 0;
+      border-radius: 12px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .suggest-btn {
+      width: 40px;
+      min-width: 40px;
+      background: #efe7ff;
+      color: var(--accent-dark);
+      font-size: 24px;
+    }
+    .clear-field-btn {
+      width: 36px;
+      min-width: 36px;
+      background: #eef2f7;
+      color: var(--muted);
+      font-size: 22px;
+    }
+    .clear-field-btn:active {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .chooser-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(23, 32, 51, .38);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+    }
+    .chooser-overlay.visible {
+      display: flex;
+    }
+    .chooser-panel {
+      width: 100%;
+      max-width: 560px;
+      max-height: 82vh;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.24);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 12px;
+    }
+    .chooser-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .chooser-title {
+      font-weight: 900;
+      font-size: 20px;
+    }
+    .chooser-close {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      padding: 0;
+      font-size: 28px;
+      line-height: 1;
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .chooser-search {
+      font-size: 18px;
+      padding: 13px;
+    }
+    .chooser-list {
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+      padding-right: 2px;
+    }
+    .choice-item {
+      width: 100%;
+      text-align: left;
+      background: #fffdfb;
+      color: var(--text);
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .choice-empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 12px;
+      font-size: 14px;
+    }
+    .chooser-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chooser-save-new {
+      background: #fff0b8;
+      color: #b87900;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(139, 92, 246, .16);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
     button {
       border: 0;
       border-radius: 16px;
-      padding: 11px 14px;
-      background: var(--brown);
-      color: #fff;
-      font-weight: 950;
-      font-size: 14px;
+      padding: 14px;
+      font-weight: 800;
+      font-size: 16px;
       cursor: pointer;
-      min-height: 42px;
+      font-family: inherit;
     }
-
-    button:hover { filter: brightness(.98); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-
-    .secondary { background: var(--cream2); color: var(--brown-dark); }
-    .blue { background: var(--blue-bg); color: var(--blue); }
-    .green { background: var(--green-bg); color: var(--green); }
-    .red { background: var(--red-bg); color: var(--red); }
-    .yellow { background: var(--yellow-bg); color: var(--yellow); }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-top: 10px;
-    }
-
-    .actions.center { justify-content: center; }
-
-    .notice {
-      display: none;
-      margin: 9px 0 0;
-      padding: 10px 12px;
-      border-radius: 16px;
-      background: var(--blue-bg);
-      color: var(--blue);
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 850;
-    }
-
-    .notice.visible { display: block; }
-
-    .results {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    @media (max-width: 720px) {
-      .results { grid-template-columns: 1fr; }
-    }
-
-    .result-box {
-      background: var(--cream);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 11px;
-    }
-
-    .result-label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 900;
-    }
-
-    .result-value {
-      margin-top: 3px;
-      font-size: 24px;
-      line-height: 1.1;
-      font-weight: 1000;
-      color: var(--brown-dark);
-    }
-
-    .rating.good { color: #247a3e; }
-    .rating.mid { color: #a46b00; }
-    .rating.high { color: #b3261e; }
-
-    .tabs {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding: 9px 0;
-      margin: 4px 0;
-      background: linear-gradient(180deg, rgba(255,247,239,.96), rgba(255,247,239,.80));
-      backdrop-filter: blur(8px);
-      scrollbar-width: none;
-    }
-
-    .tabs::-webkit-scrollbar { display: none; }
-
-    .tab {
-      flex: 0 0 auto;
-      border-radius: 999px;
-      background: var(--cream2);
-      color: var(--brown-dark);
-      padding: 10px 13px;
-      min-height: 38px;
-      font-size: 13px;
-    }
-
-    .tab.active {
-      background: var(--brown);
+    .primary {
+      background: var(--accent);
       color: white;
+      min-width: 190px;
+      width: auto;
+      padding-left: 28px;
+      padding-right: 28px;
     }
-
-    .list {
-      display: grid;
-      gap: 8px;
+    .save-card .primary {
+      min-width: 150px;
     }
-
-    .food-item, .user-item {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: start;
-      background: #fffdfb;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 12px;
-    }
-
-    @media (max-width: 520px) {
-      .food-item, .user-item {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .food-title {
-      font-size: 15px;
-      line-height: 1.25;
-      font-weight: 1000;
-      color: var(--brown-dark);
-    }
-
-    .food-sub {
-      margin-top: 4px;
+    .small-action {
       font-size: 13px;
-      color: var(--muted);
-      line-height: 1.4;
-      font-weight: 650;
-    }
-
-    .mini-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .mini-actions button {
-      min-width: 0;
-      min-height: 0;
+      padding: 9px 12px;
       border-radius: 999px;
-      padding: 8px 10px;
-      font-size: 12px;
+      min-width: 0;
+    }
+    .primary:active { background: var(--accent-dark); }
+    .secondary {
+      background: #efe7ff;
+      color: var(--accent-dark);
+    }
+    .save-card .secondary {
+      min-width: 140px;
+    }
+    .danger {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .backup-toggle {
+      min-width: 0;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .backup-mini {
+      display: flex;
+      justify-content: center;
+      margin: 2px 0 18px;
+    }
+    .backup-content { display: none; }
+    .backup-content.visible { display: block; }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .row:last-child { border-bottom: 0; }
+    .name {
+      color: var(--muted);
+      font-weight: 700;
+      max-width: 56%;
+    }
+    .value {
+      font-size: 28px;
+      font-weight: 900;
+      text-align: right;
+      white-space: nowrap;
+      color: var(--text);
+    }
+    .dry-good { color: var(--green); }
+    .dry-mid { color: var(--orange); }
+    .dry-high { color: var(--red); }
+    .rating {
+      display: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 900;
+      min-height: 44px;
+      background: transparent;
+    }
+    .rating.good { display: flex; color: var(--green); }
+    .rating.mid { display: flex; color: var(--orange); }
+    .rating.high { display: flex; color: var(--red); }
+
+    .paw {
+      width: 26px;
+      height: 26px;
+      display: block;
+      flex: 0 0 auto;
+      overflow: visible;
+    }
+    .paw .shape {
+      fill: #ffffff;
+      stroke: currentColor;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
     }
 
+    .error, .notice {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .error { background: #fbe0e0; color: var(--red); }
+    .notice { background: var(--soft); color: var(--accent-dark); }
+    .save-card { display: none; }
+    .save-card.visible { display: block; }
+    .food-list-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      min-height: 32px;
+    }
+    .food-list-head h2 {
+      margin: 0;
+      text-align: center;
+      width: 100%;
+    }
+    .food-list-toggle {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0;
+      border-radius: 12px;
+      background: #efe7ff;
+      color: var(--accent-dark);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .food-list-toggle svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform .18s ease;
+    }
+    .food-list-toggle.expanded svg {
+      transform: rotate(90deg);
+    }
+    .download-icon-btn {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0;
+      border-radius: 12px;
+      background: #efe7ff;
+      color: var(--accent-dark);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .download-icon-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .list-tools {
+      display: grid;
+      gap: 10px;
+      margin: -2px 0 14px;
+    }
+    .search-wrap {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 8px;
+      align-items: center;
+    }
+    .search-input {
+      font-size: 16px;
+      padding: 11px 12px;
+      scroll-margin-top: 16px;
+    }
+    .search-clear-btn {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0;
+      border-radius: 12px;
+      background: #eef2f7;
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #foodListSection {
+      scroll-margin-top: 12px;
+    }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .filter-btn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #eef2f7;
+      color: var(--muted);
+    }
+    .filter-btn[data-filter="all"].active {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .filter-good {
+      background: #e3f6ec;
+      color: var(--green);
+    }
+    .filter-mid {
+      background: #fff0dc;
+      color: var(--orange);
+    }
+    .filter-high {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .filter-good.active {
+      background: var(--green);
+      color: #ffffff;
+    }
+    .filter-mid.active {
+      background: var(--orange);
+      color: #ffffff;
+    }
+    .filter-high.active {
+      background: var(--red);
+      color: #ffffff;
+    }
+    .filter-fav {
+      background: #fff0b8;
+      color: #b87900;
+    }
+    .filter-fav.active {
+      background: #d99a00;
+      color: #ffffff;
+    }
+    .filter-pool {
+      background: #e2f3ff;
+      color: #1d5f8f;
+    }
+    .filter-pool.active {
+      background: #4da9df;
+      color: #ffffff;
+    }
+    .food-items-content.collapsed {
+      display: none;
+    }
+    .saved-list { display: grid; gap: 12px; }
     .empty {
       text-align: center;
       color: var(--muted);
-      font-weight: 900;
-      padding: 20px;
-      background: #fffdfb;
-      border: 1px dashed var(--line);
-      border-radius: 18px;
+      font-size: 15px;
+      padding: 8px 0;
     }
-
-    .hidden { display: none !important; }
-
-    .overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      background: rgba(38, 28, 20, .30);
-    }
-
-    .overlay.visible { display: flex; }
-
-    .modal {
-      width: min(840px, 100%);
-      max-height: 88vh;
-      overflow: auto;
-      background: white;
+    .food-item {
       border: 1px solid var(--line);
-      border-radius: 26px;
+      border-radius: 18px;
       padding: 14px;
-      box-shadow: 0 20px 70px rgba(38, 28, 20, .25);
-    }
-
-    .modal-head {
-      display: flex;
+      background: #fffdfb;
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 12px;
       align-items: center;
-      justify-content: space-between;
+    }
+    .food-item:active { transform: scale(.99); }
+    .food-item.selected {
+      border-color: var(--accent);
+      background: var(--soft);
+    }
+    .food-main { min-width: 0; }
+    .food-top {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      font-size: 16px;
       margin-bottom: 8px;
+      line-height: 1.25;
     }
-
-    .modal-head h2 { margin: 0; }
-
-    .close {
-      min-height: 0;
+    .food-brand {
+      font-weight: 900;
+      font-size: 14px;
+    }
+    .food-sort {
+      font-weight: 800;
+      font-size: 14px;
+      margin-top: 2px;
+    }
+    .food-top.good { color: var(--green); }
+    .food-top.mid { color: var(--orange); }
+    .food-top.high { color: var(--red); }
+    .food-meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .food-rating {
+      font-weight: 900;
+    }
+    .food-rating.good { color: var(--green); }
+    .food-rating.mid { color: var(--orange); }
+    .food-rating.high { color: var(--red); }
+    .food-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+    .favorite-btn {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 50%;
+      background: #eef2f7;
+      color: #9aa6b8;
+      font-size: 25px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .favorite-btn.active {
+      background: #fff0b8;
+      color: #b87900;
+    }
+    .food-item.pool-item {
+      background: #f4fbff;
+      border-color: #b8ddf5;
+    }
+    .pool-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       border-radius: 999px;
-      background: var(--cream2);
-      color: var(--brown-dark);
-      padding: 8px 12px;
+      padding: 2px 8px;
+      margin-left: 4px;
+      background: #e2f3ff;
+      color: #1d5f8f;
+      font-size: 12px;
+      font-weight: 900;
     }
-
+    .pool-suggest-btn,
+    .pool-change-btn {
+      background: #e2f3ff;
+      color: #1d5f8f;
+    }
+    .pool-change-btn {
+      background: #dff7ff;
+    }
+    .pool-suggestions-card {
+      grid-template-rows: auto auto 1fr;
+    }
+    .pool-suggestions-list {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding-right: 2px;
+      padding-bottom: 8px;
+    }
+    .pool-suggestion-item {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: #fffdfb;
+      border-radius: 16px;
+      padding: 10px;
+    }
+    .pool-suggestion-title {
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .pool-suggestion-meta {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .pool-suggestion-values {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .pool-suggestion-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .pool-suggestion-actions button {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .pool-suggestion-analysis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pool-suggestion-analysis span {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      line-height: 1.25;
+    }
+    .pool-suggestion-analysis strong {
+      color: var(--text);
+    }
+    .pool-suggestion-kind {
+      display: inline-flex;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: #e2f3ff;
+      color: #1d5f8f;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .pool-change-compare {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pool-change-col strong {
+      color: var(--accent-dark);
+    }
+    .pool-change-col div {
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+    .approve-pool-btn {
+      background: #e3f6ec;
+      color: var(--green);
+    }
+    .reject-pool-btn {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .delete-x {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 30px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .editing-note {
+      display: none;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: var(--soft);
+      color: var(--accent-dark);
+      font-weight: 800;
+      text-align: center;
+      font-size: 14px;
+    }
+    .editing-note.visible { display: block; }
+    .hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: -4px 0 14px;
+    }
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-top: 14px;
+    }
+    .access-card {
+      text-align: center;
+    }
+    .access-card p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      margin: 8px 0 14px;
+    }
+    .user-access-card {
+      grid-template-rows: auto auto 1fr;
+    }
+    .user-access-list {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding-right: 2px;
+      padding-bottom: 8px;
+    }
+    .user-access-item {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      border: 1px solid var(--line);
+      background: #fffdfb;
+      border-radius: 16px;
+      padding: 10px;
+    }
+    .user-access-email {
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--text);
+      word-break: break-word;
+    }
+    .user-access-meta {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .user-access-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .status-pending {
+      background: #fff0b8;
+      color: #b87900;
+    }
+    .status-approved {
+      background: #e3f6ec;
+      color: var(--green);
+    }
+    .status-blocked {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .user-access-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .user-access-actions button {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .approve-user-btn {
+      background: #e3f6ec;
+      color: var(--green);
+    }
+    .block-user-btn {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .pending-count-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      margin-left: 4px;
+      border-radius: 999px;
+      background: #d99a00;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .version-note {
+      text-align: center;
+      color: #9aa6b8;
+      font-size: 11px;
+      margin-top: 6px;
+      user-select: none;
+    }
+    .footer-privacy-link,
+    .text-link {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--accent-dark);
+      padding: 0;
+      min-width: 0;
+      font: inherit;
+      font-weight: 900;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .privacy-register-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin: 10px 0 0;
+    }
+    .privacy-card {
+      width: 100%;
+      max-width: 620px;
+      height: calc(100dvh - 24px);
+      max-height: calc(100dvh - 24px);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      margin: 0;
+    }
+    .privacy-content {
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 4px 2px 8px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .privacy-content h3 {
+      margin: 16px 0 6px;
+      font-size: 15px;
+      color: var(--accent-dark);
+    }
+    .privacy-content p {
+      margin: 0 0 10px;
+    }
+    .privacy-content ul {
+      margin: 0 0 10px 18px;
+      padding: 0;
+    }
+    .privacy-content li {
+      margin: 4px 0;
+    }
+    .admin-options-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1800;
+      background: rgba(23, 32, 51, .38);
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+      padding: 12px;
+      overflow: hidden;
+      overscroll-behavior: contain;
+    }
+    .admin-options-overlay.visible {
+      display: flex !important;
+    }
+    .admin-options-card {
+      width: 100%;
+      max-width: 560px;
+      height: calc(100dvh - 24px);
+      max-height: calc(100dvh - 24px);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto auto auto 1fr;
+      margin: 0;
+    }
+    .admin-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+    }
+    .admin-head h2 {
+      margin: 0;
+    }
+    .admin-close {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 24px;
+      line-height: 1;
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .admin-select,
+    #optionAdminSearch,
+    #optionNewValue {
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-size: 16px;
+      min-height: 42px;
+      line-height: 1.2;
+      background: #fffdfb;
+      color: var(--text);
+      font-family: inherit;
+    }
+    .admin-add-row {
+      display: grid;
+      grid-template-columns: 1fr 42px;
+      gap: 8px;
+      align-items: center;
+      margin: 10px 0;
+    }
+    .admin-add-btn {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      padding: 0;
+      border-radius: 14px;
+      font-size: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .admin-download-row {
+      display: flex;
+      justify-content: center;
+      margin: 8px 0 10px;
+    }
+    .admin-download-row-top {
+      margin: 4px 0 12px;
+    }
+    .admin-download-btn {
+      font-size: 13px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      min-width: 0;
+      background: #fff0b8;
+      color: #b87900;
+    }
+    .option-admin-list {
+      display: grid;
+      align-content: start;
+      gap: 7px;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding-right: 2px;
+      padding-bottom: 8px;
+    }
+    .option-admin-item {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 7px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fffdfb;
+      border-radius: 14px;
+      padding: 8px;
+    }
+    .option-admin-text {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .option-admin-edit,
+    .option-admin-delete {
+      min-width: 0;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .option-admin-edit {
+      background: #efe7ff;
+      color: var(--accent-dark);
+    }
+    .option-admin-delete {
+      background: #ffe3e3;
+      color: var(--red);
+      font-size: 20px;
+      width: 34px;
+      padding: 0;
+      line-height: 1;
+    }
+    .auth-card input {
+      font-size: 18px;
+    }
+    .user-mini {
+      margin: -4px 0 14px;
+      padding: 0 4px;
+    }
+    .auth-status {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .auth-label {
+      line-height: 1.3;
+    }
+    .auth-email {
+      font-weight: 800;
+      color: var(--accent-dark);
+      word-break: break-word;
+    }
+    .logout-mini,
+    .lists-mini,
+    .users-mini,
+    .pool-mini {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .logout-mini {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .lists-mini {
+      background: #efe7ff;
+      color: var(--accent-dark);
+    }
+    .users-mini {
+      background: #fff0b8;
+      color: #b87900;
+    }
+    .pool-mini {
+      background: #e2f3ff;
+      color: #1d5f8f;
+    }
+    .sync-note {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+    .global-notice {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      width: calc(100% - 48px);
+      max-width: 360px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: #1d5f8f;
+      background: #e2f3ff;
+      border: 1px solid #b8ddf5;
+      border-radius: 999px;
+      padding: 13px 18px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, .22);
+      pointer-events: none;
+    }
+    .app-content {
+      display: none;
+    }
+    .app-content.visible {
+      display: block;
+    }
+  
+    .pool-suggestion-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 2px 0 8px;
+      scrollbar-width: none;
+    }
+    .pool-suggestion-tabs::-webkit-scrollbar { display: none; }
+    .pool-suggestion-tab {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      background: #edf5ff;
+      color: #1d5f8f;
+      white-space: nowrap;
+    }
+    .pool-suggestion-tab.active {
+      background: #4da9df;
+      color: #ffffff;
+    }
+    .chooser-suggest-option {
+      background: #e2f3ff;
+      color: #1d5f8f;
+    }
+    .pool-suggestion-item {
+      border: 1px solid var(--line);
+      background: #fffdfb;
+      border-radius: 16px;
+      padding: 10px;
+      display: grid;
+      gap: 7px;
+    }
+    .pool-suggestion-kind {
+      display: inline-flex;
+      width: fit-content;
+      border-radius: 999px;
+      background: #e2f3ff;
+      color: #1d5f8f;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .pool-suggestion-title {
+      color: var(--accent-dark);
+      font-weight: 900;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .pool-suggestion-meta,
+    .pool-suggestion-values,
+    .pool-suggestion-analysis {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .pool-suggestion-analysis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pool-suggestion-analysis span {
+      background: #f7f3ff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+    .pool-suggestion-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .pool-suggestion-actions button {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .approve-pool-btn,
+    .approve-option-btn {
+      background: #e3f6ec;
+      color: var(--green);
+    }
+    .reject-pool-btn {
+      background: #ffe3e3;
+      color: var(--red);
+    }
+    .pool-change-compare {
+      display: grid;
+      gap: 6px;
+      background: #f8fbff;
+      border-radius: 13px;
+      padding: 7px;
+      border: 1px solid #d8e5f5;
+    }
+    .pool-change-col {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .pool-change-col strong { color: var(--accent-dark); }
     .status-pill {
       display: inline-flex;
       border-radius: 999px;
       padding: 3px 8px;
       font-weight: 900;
       font-size: 12px;
-      background: var(--blue-bg);
-      color: var(--blue);
     }
+    .status-pending { background: #fff0b8; color: #b87900; }
+    .status-approved { background: #e3f6ec; color: var(--green); }
+    .status-blocked { background: #ffe3e3; color: var(--red); }
+
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <img class="logo" src="header-logo.png" alt="NfE Katze Logo" onerror="this.style.display='none'">
-      <h1>NfE Katze</h1>
-      <div class="subtitle">Rechner und Futterliste für Katzenfutter</div>
-      <div class="version-note">Supabase v2 · Design angepasst</div>
-    </header>
-
-    <section id="authCard" class="card">
-      <h2>Login</h2>
-      <div class="grid">
-        <label>E-Mail
-          <input id="authEmail" type="email" autocomplete="email">
-        </label>
-        <label>Passwort
-          <input id="authPassword" type="password" autocomplete="current-password">
-        </label>
+<main class="wrap">
+    <section id="authCard" class="card auth-card">
+      <h2>Anmelden</h2>
+      <div class="save-grid">
+        <div>
+          <label for="authEmail">E-Mail</label>
+          <input id="authEmail" type="email" autocomplete="username" placeholder="deine E-Mail">
+        </div>
+        <div>
+          <label for="authPassword">Passwort</label>
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Passwort">
+        </div>
       </div>
-      <div class="actions center">
-        <button onclick="login()">Einloggen</button>
-        <button class="secondary" onclick="signup()">Konto erstellen</button>
+      <div class="actions">
+        <button class="primary" onclick="loginAccount()">Einloggen</button>
+        <button class="secondary" onclick="registerAccount()">Konto erstellen</button>
+        <button class="secondary small-action" onclick="resetPassword()">Passwort vergessen</button>
       </div>
       <div id="authNotice" class="notice"></div>
-    </section>
-
-    <section id="userCard" class="card hidden">
-      <div class="topbar">
-        <span>Angemeldet als <span id="userEmail" class="auth-email"></span></span>
-        <button id="usersButton" class="yellow hidden" onclick="openUsersModal()">Nutzer</button>
-        <button id="poolAdminButton" class="blue hidden" onclick="setTab('adminPool')">Pool verwalten</button>
-        <button class="secondary" onclick="logout()">Abmelden</button>
+      <div class="privacy-register-note">
+        Mit dem Erstellen eines Kontos bestätigst du, dass du die
+        <button type="button" class="text-link" onclick="openPrivacy()">Datenschutzhinweise</button>
+        gelesen hast.
       </div>
-      <div id="accessNotice" class="notice"></div>
+      <div class="sync-note">Melde dich auf allen Geräten mit demselben Konto an, damit die Futter-Liste synchronisiert wird.</div>
     </section>
 
-    <main id="appContent" class="hidden">
-      <section class="card">
-        <h2 id="formTitle">Dieses Futter speichern</h2>
-
-        <div class="grid">
-          <label>Marke
-            <input id="brand" list="brandList" placeholder="z. B. MAC's">
-          </label>
-          <label>Sorte
-            <input id="sort" list="sortList" placeholder="z. B. Huhn">
-          </label>
-          <label>Verpackung
-            <input id="packaging" list="packagingList" placeholder="Dose, Beutel ...">
-          </label>
-          <label>Gewicht
-            <input id="weight" list="weightList" placeholder="z. B. 400 g">
-          </label>
-          <label>Lebensalter
-            <input id="lifeAge" list="lifeAgeList" placeholder="Adult, Kitten ...">
-          </label>
-        </div>
-
-        <div class="grid" style="margin-top:10px">
-          <label>Rohprotein %
-            <input id="protein" type="number" step="0.01" inputmode="decimal">
-          </label>
-          <label>Rohfett %
-            <input id="fat" type="number" step="0.01" inputmode="decimal">
-          </label>
-          <label>Rohfaser %
-            <input id="fiber" type="number" step="0.01" inputmode="decimal">
-          </label>
-          <label>Rohasche %
-            <input id="ash" type="number" step="0.01" inputmode="decimal">
-          </label>
-          <label>Feuchtigkeit %
-            <input id="moisture" type="number" step="0.01" inputmode="decimal">
-          </label>
-        </div>
-
-        <datalist id="brandList"></datalist>
-        <datalist id="sortList"></datalist>
-        <datalist id="packagingList"></datalist>
-        <datalist id="weightList"></datalist>
-        <datalist id="lifeAgeList"></datalist>
-
-        <div class="actions center">
-          <button onclick="calculate()">Berechnen</button>
-          <button id="saveButton" class="green" onclick="saveFood()">Futter speichern</button>
-          <button class="secondary" onclick="newFood()">Neues Futter</button>
-        </div>
-
-        <div class="results">
-          <div class="result-box">
-            <div class="result-label">NfE Frischmasse</div>
-            <div id="nfeFresh" class="result-value">–</div>
-          </div>
-          <div class="result-box">
-            <div class="result-label">NfE Trockenmasse</div>
-            <div id="nfeDry" class="result-value">–</div>
-          </div>
-          <div class="result-box">
-            <div class="result-label">Bewertung</div>
-            <div id="rating" class="result-value rating">–</div>
-          </div>
-        </div>
-
-        <div id="formNotice" class="notice"></div>
-      </section>
-
-      <nav class="tabs">
-        <button id="tabOwn" class="tab active" onclick="setTab('own')">Meine Futter</button>
-        <button id="tabPool" class="tab" onclick="setTab('pool')">Futterpool</button>
-        <button id="tabAdminPool" class="tab hidden" onclick="setTab('adminPool')">Pool verwalten</button>
-      </nav>
-
-      <section id="ownSection" class="card">
-        <h2>Meine Futter</h2>
-        <div id="ownList" class="list"></div>
-      </section>
-
-      <section id="poolSection" class="card hidden">
-        <h2>Futterpool</h2>
-        <div class="actions center">
-          <button class="blue" onclick="loadPool()">Futterpool aktualisieren</button>
-        </div>
-        <div id="poolList" class="list"></div>
-      </section>
-
-      <section id="adminPoolSection" class="card hidden">
-        <h2>Pool verwalten</h2>
-        <div class="notice visible">Admin speichert hier direkt in den gemeinsamen Futterpool.</div>
-        <div id="adminPoolList" class="list" style="margin-top:10px"></div>
-      </section>
-    </main>
-  </div>
-
-  <div id="usersOverlay" class="overlay" onclick="closeUsersModal(event)">
-    <section class="modal" onclick="event.stopPropagation()">
-      <div class="modal-head">
-        <h2>Nutzer freigeben</h2>
-        <button class="close" onclick="closeUsersModal()">×</button>
+    <section id="userCard" class="user-mini" style="display:none">
+      <div class="auth-status">
+        <span class="auth-label">Angemeldet als <span id="userEmail" class="auth-email"></span></span>
+        <button id="openListsButton" class="lists-mini" onclick="openListsAdmin()" style="display:none">Listen</button>
+        <button id="openUsersButton" class="users-mini" onclick="openUsersAdmin()" style="display:none">Nutzer</button>
+        <button id="openPoolSuggestionsButton" class="pool-mini" onclick="openPoolSuggestionsAdmin()" style="display:none">Pool Vorschläge</button>
+        <button class="logout-mini" onclick="logoutAccount()">Abmelden</button>
       </div>
-      <div id="usersList" class="list"></div>
     </section>
-  </div>
+    <div id="syncNotice" class="global-notice"></div>
 
-  <script>
-    const SUPABASE_URL = "https://lhwpoxblptyhsyesnihn.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_6H76BTrYdXfoINXted_gzA_gfMKEyX1";
-    const ADMIN_EMAIL = "wroblewski.stefanie@gmail.com";
+    <div id="privacyOverlay" class="admin-options-overlay" style="display:none" onclick="closePrivacy(event)">
+      <section id="privacyCard" class="card privacy-card" onclick="event.stopPropagation()">
+        <div class="admin-head">
+          <h2>Datenschutzhinweise</h2>
+          <button type="button" class="admin-close" aria-label="Datenschutz schließen" onclick="closePrivacy()">×</button>
+        </div>
 
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        <div class="privacy-content">
+          <p><strong>Verantwortlich:</strong><br>Stefanie Wroblewski</p>
+          <p><strong>Kontakt:</strong><br>info.stwcatnfe@gmail.com</p>
 
-    let currentUser = null;
-    let currentAccess = null;
-    let isAdmin = false;
-    let activeTab = "own";
-    let editingId = null;
-    let editingMode = "own";
-    let currentResult = null;
+          <h3>1. Worum geht es?</h3>
+          <p>Diese App dient dazu, Futterdaten für Katzen zu speichern, zu berechnen und zwischen Geräten zu synchronisieren. Damit die App genutzt werden kann, werden bestimmte Daten gespeichert und verarbeitet.</p>
 
-    let ownFoods = [];
-    let poolFoods = [];
-    let optionValues = [];
+          <h3>2. Welche Daten werden gespeichert?</h3>
+          <p>Beim Erstellen und Nutzen eines Kontos können folgende Daten gespeichert werden:</p>
+          <ul>
+            <li>E-Mail-Adresse zur Anmeldung</li>
+            <li>technische Nutzer-ID</li>
+            <li>Freigabestatus des Kontos, zum Beispiel wartend, freigegeben oder gesperrt</li>
+            <li>Zeitpunkt der Registrierung und der letzten Nutzung</li>
+            <li>vom Nutzer gespeicherte Futtereinträge</li>
+            <li>Favoriten-Markierungen</li>
+            <li>allgemeine Vorschlagslisten wie Marken, Sorten, Verpackungen, Gewichte und Lebensalter</li>
+          </ul>
 
-    function el(id) { return document.getElementById(id); }
+          <h3>3. Wofür werden die Daten genutzt?</h3>
+          <p>Die Daten werden verwendet, damit Nutzer sich anmelden, ihre eigene Futterliste speichern, bearbeiten und zwischen Geräten synchronisieren können.</p>
+          <p>Die E-Mail-Adresse und der Freigabestatus werden genutzt, um den Zugang zur App zu verwalten und nicht freigegebene Nutzer auszuschließen.</p>
 
-    function showNotice(id, text) {
-      const box = el(id);
-      if (!box) return;
-      box.textContent = text || "";
-      box.classList.toggle("visible", !!text);
+          <h3>4. Wer kann die Daten sehen?</h3>
+          <p>Jeder Nutzer sieht nur seine eigenen gespeicherten Futterdaten.</p>
+          <p>Die verantwortliche Person beziehungsweise der Admin kann Nutzer freigeben oder sperren, zentrale Vorschlagslisten bearbeiten und technische Verwaltungsfunktionen ausführen.</p>
+
+          <h3>5. Technischer Dienstleister</h3>
+          <p>Die App nutzt Supabase für Anmeldung, Nutzerverwaltung und Datenspeicherung. Supabase verarbeitet Daten technisch zur Bereitstellung der App.</p>
+
+          <h3>6. Speicherdauer</h3>
+          <p>Die Daten bleiben gespeichert, solange das Nutzerkonto besteht oder bis eine Löschung gewünscht wird.</p>
+
+          <h3>7. Löschung und Auskunft</h3>
+          <p>Nutzer können über die oben genannte Kontaktadresse Auskunft über ihre gespeicherten Daten verlangen oder die Löschung ihres Kontos und ihrer gespeicherten Daten anfordern.</p>
+
+          <h3>8. Keine Weitergabe zu Werbezwecken</h3>
+          <p>Die gespeicherten Daten werden nicht zu Werbezwecken verkauft oder an Dritte weitergegeben.</p>
+
+          <h3>9. Hinweis</h3>
+          <p>Diese Datenschutzhinweise geben eine einfache Übersicht über die Datenverarbeitung in dieser App. Für eine rechtlich verbindliche Prüfung sollte bei Bedarf rechtlicher Rat eingeholt werden.</p>
+        </div>
+      </section>
+    </div>
+
+    <section id="accessCard" class="card access-card" style="display:none">
+      <h2>Konto wartet auf Freigabe</h2>
+      <p id="accessMessage">Dein Konto wurde erstellt. Bitte warte, bis es freigegeben wurde.</p>
+      <button class="secondary small-action" onclick="logoutAccount()">Abmelden</button>
+    </section>
+
+    <div id="appContent" class="app-content">
+    <section class="card">
+      <div class="title">
+        <div class="icon"><img src="header-logo.png" alt=""></div>
+        <h1>NfE-Rechner für Katzen</h1>
+      </div>
+
+      <div class="grid">
+        <div><label for="protein">Rohprotein (%)</label><input id="protein" inputmode="decimal" autocomplete="off" placeholder="z. B. 9,5"></div>
+        <div><label for="fett">Rohfett (%)</label><input id="fett" inputmode="decimal" autocomplete="off" placeholder="z. B. 5"></div>
+        <div><label for="faser">Rohfaser (%)</label><input id="faser" inputmode="decimal" autocomplete="off" placeholder="z. B. 0,5"></div>
+        <div><label for="asche">Rohasche (%)</label><input id="asche" inputmode="decimal" autocomplete="off" placeholder="z. B. 2"></div>
+        <div><label for="feuchte">Feuchtigkeit (%)</label><input id="feuchte" inputmode="decimal" autocomplete="off" placeholder="z. B. 82"></div>
+      </div>
+
+      <div id="error" class="error"></div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <div class="name">NfE-Wert Trockenmasse</div>
+        <div class="value" id="nfeDry">–</div>
+      </div>
+      <div class="row">
+        <div class="name">NfE-Wert</div>
+        <div class="value" id="nfeFresh">–</div>
+      </div>
+      <div id="rating" class="rating"></div>
+    </section>
+
+    <section id="saveCard" class="card save-card">
+      <h2 id="saveTitle">Dieses Futter speichern</h2>
+      <div class="save-grid">
+        <div>
+          <label for="brand">Marke</label>
+          <div class="suggest-wrap">
+            <input id="brand" autocomplete="off" placeholder="z. B. MjAMjAM">
+            <button type="button" class="clear-field-btn" aria-label="Marke löschen" onclick="clearField('brand')">×</button>
+            <button type="button" class="suggest-btn" aria-label="Marke auswählen" onclick="openChooser('brand','brandOptions','Marke')">+</button>
+          </div>
+        </div>
+        <div>
+          <label for="sort">Sorte</label>
+          <div class="suggest-wrap">
+            <input id="sort" autocomplete="off" placeholder="z. B. Huhn">
+            <button type="button" class="clear-field-btn" aria-label="Sorte löschen" onclick="clearField('sort')">×</button>
+            <button type="button" class="suggest-btn" aria-label="Sorte auswählen" onclick="openChooser('sort','sortOptions','Sorte')">+</button>
+          </div>
+        </div>
+        <div>
+          <label for="packaging">Verpackung</label>
+          <div class="suggest-wrap">
+            <input id="packaging" autocomplete="off" placeholder="z. B. Dose">
+            <button type="button" class="clear-field-btn" aria-label="Verpackung löschen" onclick="clearField('packaging')">×</button>
+            <button type="button" class="suggest-btn" aria-label="Verpackung auswählen" onclick="openChooser('packaging','packagingOptions','Verpackung')">+</button>
+          </div>
+        </div>
+        <div>
+          <label for="weight">Gewicht</label>
+          <div class="suggest-wrap">
+            <input id="weight" autocomplete="off" placeholder="z. B. 400 g">
+            <button type="button" class="clear-field-btn" aria-label="Gewicht löschen" onclick="clearField('weight')">×</button>
+            <button type="button" class="suggest-btn" aria-label="Gewicht auswählen" onclick="openChooser('weight','weightOptions','Gewicht')">+</button>
+          </div>
+        </div>
+        <div>
+          <label for="lifeAge">Lebensalter</label>
+          <div class="suggest-wrap">
+            <input id="lifeAge" autocomplete="off" placeholder="z. B. Adult">
+            <button type="button" class="clear-field-btn" aria-label="Lebensalter löschen" onclick="clearField('lifeAge')">×</button>
+            <button type="button" class="suggest-btn" aria-label="Lebensalter auswählen" onclick="openChooser('lifeAge','lifeAgeOptions','Lebensalter')">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="chooserOverlay" class="chooser-overlay" onclick="closeChooser(event)">
+        <div class="chooser-panel" onclick="event.stopPropagation()">
+          <div class="chooser-head">
+            <div id="chooserTitle" class="chooser-title">Auswahl</div>
+            <button type="button" class="chooser-close" onclick="closeChooser()">×</button>
+          </div>
+          <input id="chooserSearch" class="chooser-search" placeholder="Suchen oder frei eintippen">
+          <div id="chooserList" class="chooser-list"></div>
+          <div class="chooser-actions">
+            <button type="button" class="secondary" onclick="useFreeChooserText()">Eingabe übernehmen</button>
+            <button id="chooserSuggestButton" type="button" class="secondary chooser-suggest-option" onclick="suggestChooserTextAsOption()" style="display:none">Eintrag vorschlagen</button>
+            <button id="chooserSaveNewButton" type="button" class="secondary chooser-save-new" onclick="saveChooserTextAsOption()" style="display:none">neu speichern</button>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="saveFoodButton" class="primary" onclick="saveFood()">Futter speichern</button>
+        <button id="saveAsNewButton" class="primary" onclick="saveFoodAsNew()" style="display:none">neues Futter</button>
+        <button id="suggestPoolButton" class="secondary pool-suggest-btn" onclick="suggestFoodForPool()">Futter vorschlagen</button>
+        <button id="suggestPoolChangeButton" class="secondary pool-change-btn" onclick="suggestPoolFoodChange()" style="display:none">Änderung vorschlagen</button>
+      </div>
+      <div id="notice" class="notice"></div>
+    </section>
+
+    <div id="adminOptionsOverlay" class="admin-options-overlay" style="display:none" onclick="closeListsAdmin(event)">
+      <section id="adminOptionsCard" class="card admin-options-card" onclick="event.stopPropagation()">
+        <div class="admin-head">
+          <h2>Listen bearbeiten</h2>
+          <button type="button" class="admin-close" aria-label="Listen schließen" onclick="closeListsAdmin()">×</button>
+        </div>
+        
+
+        <div class="admin-download-row admin-download-row-top">
+          <button type="button" class="secondary admin-download-btn" onclick="downloadSuggestionLists()">Listen herunterladen</button>
+        </div>
+<div class="admin-grid">
+          <div>
+            <label for="optionListSelect">Liste</label>
+            <select id="optionListSelect" class="admin-select" onchange="renderOptionsAdmin()">
+              <option value="brandOptions">Marken</option>
+              <option value="sortOptions">Sorten</option>
+              <option value="packagingOptions">Verpackungen</option>
+              <option value="weightOptions">Gewichte</option>
+              <option value="lifeAgeOptions">Lebensalter</option>
+            </select>
+          </div>
+          <div>
+            <label for="optionAdminSearch">Suchen</label>
+            <input id="optionAdminSearch" autocomplete="off" placeholder="Eintrag suchen">
+          </div>
+        </div>
+
+        <div class="admin-add-row">
+          <input id="optionNewValue" autocomplete="off" placeholder="Neuen Eintrag hinzufügen">
+          <button type="button" class="primary admin-add-btn" onclick="addOptionValueFromAdmin()">+</button>
+        </div>
+        <div id="optionNotice" class="notice"></div>
+        <div id="optionAdminList" class="option-admin-list"></div>
+      </section>
+    </div>
+
+    <div id="userAccessOverlay" class="admin-options-overlay" style="display:none" onclick="closeUsersAdmin(event)">
+      <section id="userAccessCard" class="card admin-options-card user-access-card" onclick="event.stopPropagation()">
+        <div class="admin-head">
+          <h2>Nutzer</h2>
+          <button type="button" class="admin-close" aria-label="Nutzer schließen" onclick="closeUsersAdmin()">×</button>
+        </div>
+
+        <div id="userAccessNotice" class="notice"></div>
+        <div id="userAccessList" class="user-access-list"></div>
+      </section>
+    </div>
+
+    <div id="poolSuggestionsOverlay" class="admin-options-overlay" style="display:none" onclick="closePoolSuggestionsAdmin(event)">
+      <section id="poolSuggestionsCard" class="card admin-options-card pool-suggestions-card" onclick="event.stopPropagation()">
+        <div class="admin-head">
+          <h2>Pool Vorschläge</h2>
+          <button type="button" class="admin-close" aria-label="Pool Vorschläge schließen" onclick="closePoolSuggestionsAdmin()">×</button>
+        </div>
+
+        <div id="poolSuggestionsNotice" class="notice"></div>
+        <div class="pool-suggestion-tabs">
+          <button type="button" class="pool-suggestion-tab active" data-pool-suggestion-filter="all" onclick="setPoolSuggestionFilter('all')">Alle</button>
+          <button type="button" class="pool-suggestion-tab" data-pool-suggestion-filter="new_food" onclick="setPoolSuggestionFilter('new_food')">Futter</button>
+          <button type="button" class="pool-suggestion-tab" data-pool-suggestion-filter="change" onclick="setPoolSuggestionFilter('change')">Änderungen</button>
+          <button type="button" class="pool-suggestion-tab" data-pool-suggestion-filter="option" onclick="setPoolSuggestionFilter('option')">Listen</button>
+        </div>
+        <div id="poolSuggestionsList" class="pool-suggestions-list"></div>
+      </section>
+    </div>
+
+    <section id="foodListSection" class="card">
+      <div class="food-list-head">
+        <button id="foodListToggle" type="button" class="food-list-toggle" aria-label="Futter einklappen" onclick="toggleFoodList()">
+          <svg id="foodListToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5l8 7-8 7"></path>
+          </svg>
+        </button>
+        <h2>Futter-Liste</h2>
+        <button type="button" class="download-icon-btn" aria-label="Excel herunterladen" onclick="downloadFoodList()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v11"></path>
+            <path d="M7 10l5 5 5-5"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="list-tools">
+        <div class="search-wrap">
+          <input id="foodSearch" class="search-input" autocomplete="off" placeholder="Futter suchen">
+          <button type="button" class="search-clear-btn" aria-label="Suche löschen" onclick="clearFoodSearch()">×</button>
+        </div>
+        <div class="filter-row">
+          <button type="button" class="filter-btn filter-good" data-filter="good" data-label="super" onclick="setFoodFilter('good')">super</button>
+          <button type="button" class="filter-btn filter-mid" data-filter="mid" data-label="geeignet" onclick="setFoodFilter('mid')">geeignet</button>
+          <button type="button" class="filter-btn filter-high" data-filter="high" data-label="vermeiden" onclick="setFoodFilter('high')">vermeiden</button>
+          <button type="button" class="filter-btn active" data-filter="all" data-label="alle" onclick="setFoodFilter('all')">alle</button>
+          <button type="button" class="filter-btn filter-fav" data-filter="fav" data-label="Favoriten" onclick="setFoodFilter('fav')">Favoriten</button>
+          <button type="button" class="filter-btn filter-pool" data-filter="pool" data-label="Futterpool" onclick="setFoodFilter('pool')">Futterpool</button>
+        </div>
+      </div>
+
+      <div id="foodItemsContent" class="food-items-content">
+        <div id="savedList" class="saved-list"></div>
+      </div>
+    </section>
+
+    </div>
+    <div class="version-note">Supabase v3 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+  </main>
+
+  
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://lhwpoxblptyhsyesnihn.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_6H76BTrYdXfoINXted_gzA_gfMKEyX1";
+  const ADMIN_EMAIL = "wroblewski.stefanie@gmail.com";
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const fields = ["protein", "fett", "faser", "asche", "feuchte"];
+  const optionMap = {
+    brandOptions: { field: "brand", category: "brand", title: "Marke" },
+    sortOptions: { field: "sort", category: "sort", title: "Sorte" },
+    packagingOptions: { field: "packaging", category: "packaging", title: "Verpackung" },
+    weightOptions: { field: "weight", category: "weight", title: "Gewicht" },
+    lifeAgeOptions: { field: "lifeAge", category: "life_age", title: "Lebensalter" }
+  };
+  const categoryToOptionKey = {
+    brand: "brandOptions",
+    sort: "sortOptions",
+    packaging: "packagingOptions",
+    weight: "weightOptions",
+    life_age: "lifeAgeOptions"
+  };
+
+  let currentUser = null;
+  let currentAccess = null;
+  let currentResult = null;
+  let editingId = null;
+  let editingMode = "own";
+  let selectedPoolFoodIdForChange = null;
+
+  let foods = [];
+  let poolFoods = [];
+  let poolFavoriteIds = new Set();
+  let poolSuggestions = [];
+  let accessUsers = [];
+  let optionRows = [];
+  let suggestionOptions = {
+    brandOptions: [],
+    sortOptions: [],
+    packagingOptions: [],
+    weightOptions: [],
+    lifeAgeOptions: []
+  };
+
+  let activeFoodFilter = "all";
+  let activePoolSuggestionFilter = "all";
+  let chooserTargetInput = "";
+  let chooserOptionsId = "";
+  let chooserTitleText = "";
+
+  function el(id) { return document.getElementById(id); }
+  function isCurrentAdmin() {
+    return !!currentUser && String(currentUser.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  }
+  function xmlEscape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[ch]));
+  }
+  function showMessage(id, text) {
+    const box = el(id);
+    if (!box) return;
+    box.textContent = text || "";
+    box.classList.toggle("visible", !!text);
+    if (id === "syncNotice" && text) {
+      box.style.display = "block";
+      setTimeout(() => { box.style.display = "none"; }, 2600);
+    }
+  }
+  function normalizeOptionValue(value) {
+    return String(value || "").trim().replace(/\s+/g, " ");
+  }
+  function parseNumber(id) {
+    const value = String(el(id)?.value || "").replace(",", ".");
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+  function fmt(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "–";
+    return num.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function dbFoodToApp(row) {
+    return {
+      id: row.id,
+      brand: row.brand || "",
+      sort: row.sort || "",
+      packaging: row.packaging || "",
+      weight: row.weight || "",
+      lifeAge: row.life_age || "",
+      favorite: !!row.favorite,
+      values: {
+        protein: row.protein ?? 0,
+        fett: row.fat ?? 0,
+        faser: row.fiber ?? 0,
+        asche: row.ash ?? 0,
+        feuchte: row.moisture ?? 0
+      },
+      result: {
+        nfeFresh: row.nfe_fresh ?? 0,
+        nfeDry: row.nfe_dry ?? 0,
+        ratingText: row.rating_text || "",
+        ratingClass: row.rating_class || ""
+      },
+      sourceFoodId: row.admin_food_id || row.id,
+      _db: row
+    };
+  }
+  function appFoodToDb(item) {
+    return {
+      brand: item.brand || "",
+      sort: item.sort || "",
+      packaging: item.packaging || "",
+      weight: item.weight || "",
+      life_age: item.lifeAge || "",
+      protein: item.values?.protein ?? 0,
+      fat: item.values?.fett ?? 0,
+      fiber: item.values?.faser ?? 0,
+      ash: item.values?.asche ?? 0,
+      moisture: item.values?.feuchte ?? 0,
+      nfe_fresh: item.result?.nfeFresh ?? 0,
+      nfe_dry: item.result?.nfeDry ?? 0,
+      rating_text: item.result?.ratingText || "",
+      rating_class: item.result?.ratingClass || ""
+    };
+  }
+  function foodLabel(item) {
+    return [item?.brand || "Unbenanntes Futter", item?.sort].filter(Boolean).join(" – ");
+  }
+
+  async function loginAccount() {
+    const email = el("authEmail").value.trim();
+    const password = el("authPassword").value;
+    showMessage("authNotice", "");
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showMessage("authNotice", error.message);
+  }
+  async function registerAccount() {
+    const email = el("authEmail").value.trim();
+    const password = el("authPassword").value;
+    showMessage("authNotice", "");
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) {
+      showMessage("authNotice", error.message);
+    } else {
+      showMessage("authNotice", "Konto wurde erstellt. Bitte einloggen. Falls Supabase eine E-Mail-Bestätigung verlangt, prüfe bitte deine E-Mails.");
+    }
+  }
+  async function resetPassword() {
+    const email = el("authEmail").value.trim();
+    if (!email) {
+      showMessage("authNotice", "Bitte zuerst deine E-Mail eintragen.");
+      return;
+    }
+    const { error } = await sb.auth.resetPasswordForEmail(email);
+    showMessage("authNotice", error ? error.message : "Wenn die E-Mail bekannt ist, wurde ein Link zum Zurücksetzen gesendet.");
+  }
+  async function logoutAccount() {
+    await sb.auth.signOut();
+  }
+
+  async function loadAccess() {
+    if (!currentUser) return null;
+    const { data, error } = await sb.from("user_access").select("*").eq("user_id", currentUser.id).maybeSingle();
+    if (error) {
+      showMessage("syncNotice", "Freigabe konnte nicht geladen werden: " + error.message);
+      return null;
+    }
+    currentAccess = data;
+    return data;
+  }
+  function applyAuthVisibility() {
+    const approved = isCurrentAdmin() || currentAccess?.status === "approved";
+
+    el("authCard").style.display = currentUser ? "none" : "";
+    el("userCard").style.display = currentUser ? "" : "none";
+    el("userEmail").textContent = currentUser?.email || "";
+    el("accessCard").style.display = currentUser && !approved ? "" : "none";
+    el("appContent").classList.toggle("visible", !!currentUser && approved);
+
+    setAdminVisibility();
+    setFoodSuggestButtonVisibility();
+
+    if (currentUser && !approved) {
+      el("accessMessage").textContent = currentAccess?.status === "blocked"
+        ? "Dieses Konto wurde gesperrt."
+        : "Dein Konto wartet noch auf Freigabe.";
+    }
+  }
+  function setAdminVisibility() {
+    const admin = isCurrentAdmin();
+    const lists = el("openListsButton");
+    const users = el("openUsersButton");
+    const suggestions = el("openPoolSuggestionsButton");
+    if (lists) lists.style.display = admin ? "inline-flex" : "none";
+    if (users) users.style.display = admin ? "inline-flex" : "none";
+    if (suggestions) suggestions.style.display = admin ? "inline-flex" : "none";
+  }
+
+  async function loadInitialData() {
+    await Promise.all([loadOptions(), loadFoods(), loadPoolFoods(), loadPoolFavorites()]);
+    renderFoods();
+  }
+
+  async function loadOptions() {
+    const { data, error } = await sb.from("option_values").select("*").eq("active", true).order("value", { ascending: true });
+    if (error) {
+      showMessage("syncNotice", "Listen konnten nicht geladen werden: " + error.message);
+      return;
+    }
+    optionRows = data || [];
+    suggestionOptions = { brandOptions: [], sortOptions: [], packagingOptions: [], weightOptions: [], lifeAgeOptions: [] };
+    optionRows.forEach(row => {
+      const key = categoryToOptionKey[row.category];
+      if (key) suggestionOptions[key].push(row.value);
+    });
+    renderOptionsAdmin();
+  }
+  async function loadFoods() {
+    if (!currentUser) return;
+    const { data, error } = await sb.from("foods").select("*").eq("user_id", currentUser.id).order("updated_at", { ascending: false });
+    if (error) {
+      showMessage("syncNotice", "Futter konnten nicht geladen werden: " + error.message);
+      return;
+    }
+    foods = (data || []).map(dbFoodToApp);
+    renderFoods();
+  }
+  async function loadPoolFoods() {
+    const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(500);
+    if (error) {
+      showMessage("syncNotice", "Futterpool konnte nicht geladen werden: " + error.message);
+      return;
+    }
+    poolFoods = (data || []).map(row => ({ ...dbFoodToApp(row), favorite: poolFavoriteIds.has(row.id), poolId: row.id }));
+    renderFoods();
+  }
+  async function loadPoolFavorites() {
+    if (!currentUser) return;
+    const { data, error } = await sb.from("pool_favorites").select("*").eq("user_id", currentUser.id);
+    if (error) {
+      console.warn(error);
+      return;
+    }
+    poolFavoriteIds = new Set((data || []).map(row => row.pool_food_id));
+    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(item.id) }));
+  }
+
+  function calculate() {
+    const protein = parseNumber("protein");
+    const fett = parseNumber("fett");
+    const faser = parseNumber("faser");
+    const asche = parseNumber("asche");
+    const feuchte = parseNumber("feuchte");
+
+    if (feuchte >= 100) {
+      el("error").textContent = "Feuchtigkeit muss unter 100 % liegen.";
+      return false;
+    }
+    el("error").textContent = "";
+
+    const nfeFresh = 100 - protein - fett - faser - asche - feuchte;
+    const dryMass = 100 - feuchte;
+    const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
+
+    let ratingText = "super";
+    let ratingClass = "good";
+    if (nfeDry > 25) {
+      ratingText = "vermeiden";
+      ratingClass = "high";
+    } else if (nfeDry > 15) {
+      ratingText = "geeignet";
+      ratingClass = "mid";
     }
 
-    function n(v) {
-      const num = Number(String(v ?? "").replace(",", "."));
-      return Number.isFinite(num) ? num : 0;
-    }
+    currentResult = { protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText, ratingClass };
 
-    function fmt(v) {
-      const num = Number(v);
-      if (!Number.isFinite(num)) return "–";
-      return num.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+    el("nfeDry").textContent = fmt(nfeDry);
+    el("nfeFresh").textContent = fmt(nfeFresh);
+    el("rating").textContent = ratingText;
+    el("rating").className = "rating " + ratingClass;
 
-    function escapeHtml(text) {
-      return String(text ?? "").replace(/[&<>"']/g, ch => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-      }[ch]));
-    }
-
-    function foodTitle(item) {
-      return [item.brand || "Unbenanntes Futter", item.sort].filter(Boolean).join(" – ");
-    }
-
-    function foodSub(item) {
-      return [item.packaging, item.weight, item.life_age].filter(Boolean).join(" · ");
-    }
-
-    function calculate() {
-      const protein = n(el("protein").value);
-      const fat = n(el("fat").value);
-      const fiber = n(el("fiber").value);
-      const ash = n(el("ash").value);
-      const moisture = n(el("moisture").value);
-
-      const nfeFresh = 100 - protein - fat - fiber - ash - moisture;
-      const dryMass = Math.max(0, 100 - moisture);
-      const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
-
-      let ratingText = "gut";
-      let ratingClass = "good";
-      if (nfeDry > 25) {
-        ratingText = "hoch";
-        ratingClass = "high";
-      } else if (nfeDry > 15) {
-        ratingText = "mittel";
-        ratingClass = "mid";
-      }
-
-      currentResult = { protein, fat, fiber, ash, moisture, nfeFresh, nfeDry, ratingText, ratingClass };
-
-      el("nfeFresh").textContent = fmt(nfeFresh);
-      el("nfeDry").textContent = fmt(nfeDry);
-      el("rating").textContent = ratingText;
-      el("rating").className = "result-value rating " + ratingClass;
-      return true;
-    }
-
-    function formToFood() {
-      if (!currentResult) calculate();
-      return {
-        brand: el("brand").value.trim(),
-        sort: el("sort").value.trim(),
-        packaging: el("packaging").value.trim(),
-        weight: el("weight").value.trim(),
-        life_age: el("lifeAge").value.trim(),
-        protein: currentResult.protein,
-        fat: currentResult.fat,
-        fiber: currentResult.fiber,
-        ash: currentResult.ash,
-        moisture: currentResult.moisture,
-        nfe_fresh: currentResult.nfeFresh,
-        nfe_dry: currentResult.nfeDry,
-        rating_text: currentResult.ratingText,
-        rating_class: currentResult.ratingClass
-      };
-    }
-
-    function fillForm(item) {
-      el("brand").value = item.brand || "";
-      el("sort").value = item.sort || "";
-      el("packaging").value = item.packaging || "";
-      el("weight").value = item.weight || "";
-      el("lifeAge").value = item.life_age || "";
-      el("protein").value = item.protein ?? "";
-      el("fat").value = item.fat ?? "";
-      el("fiber").value = item.fiber ?? "";
-      el("ash").value = item.ash ?? "";
-      el("moisture").value = item.moisture ?? "";
+    saveLastValues();
+    return true;
+  }
+  function saveLastValues() {
+    try {
+      const payload = {};
+      fields.forEach(id => payload[id] = el(id).value);
+      localStorage.setItem("nfe_supabase_last_values_v3", JSON.stringify(payload));
+    } catch (e) {}
+  }
+  function loadLastValues() {
+    try {
+      const raw = localStorage.getItem("nfe_supabase_last_values_v3");
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      fields.forEach(id => { if (payload[id]) el(id).value = payload[id]; });
       calculate();
-    }
+    } catch (e) {}
+  }
+  function clearLastValues() {
+    try { localStorage.removeItem("nfe_supabase_last_values_v3"); } catch (e) {}
+  }
+  function collectCurrentFood(forceNew) {
+    if (!calculate()) return null;
+    const existingItem = editingId && !forceNew ? foods.find(f => f.id === editingId) : null;
+    return {
+      id: forceNew ? crypto.randomUUID() : (editingId || crypto.randomUUID()),
+      brand: el("brand").value.trim(),
+      sort: el("sort").value.trim(),
+      packaging: el("packaging").value.trim(),
+      weight: el("weight").value.trim(),
+      lifeAge: el("lifeAge").value.trim(),
+      favorite: existingItem ? !!existingItem.favorite : false,
+      values: {
+        protein: currentResult.protein,
+        fett: currentResult.fett,
+        faser: currentResult.faser,
+        asche: currentResult.asche,
+        feuchte: currentResult.feuchte
+      },
+      result: {
+        nfeFresh: currentResult.nfeFresh,
+        nfeDry: currentResult.nfeDry,
+        ratingText: currentResult.ratingText,
+        ratingClass: currentResult.ratingClass
+      }
+    };
+  }
+  async function saveFood() {
+    await saveFoodInternal(false);
+  }
+  async function saveFoodAsNew() {
+    await saveFoodInternal(true);
+  }
+  async function saveFoodInternal(forceNew) {
+    if (!currentUser) return;
+    const item = collectCurrentFood(forceNew);
+    if (!item) return;
 
-    function newFood() {
-      editingId = null;
-      editingMode = activeTab === "adminPool" && isAdmin ? "pool" : "own";
-      ["brand","sort","packaging","weight","lifeAge","protein","fat","fiber","ash","moisture"].forEach(id => el(id).value = "");
-      currentResult = null;
-      el("nfeFresh").textContent = "–";
-      el("nfeDry").textContent = "–";
-      el("rating").textContent = "–";
-      el("rating").className = "result-value rating";
-      el("formTitle").textContent = editingMode === "pool" ? "Pool-Futter eintragen" : "Dieses Futter speichern";
-      el("saveButton").textContent = "Futter speichern";
-      showNotice("formNotice", "");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    try {
+      const payload = { ...appFoodToDb(item), user_id: currentUser.id, favorite: !!item.favorite };
+      let savedId = item.id;
 
-    async function signup() {
-      const email = el("authEmail").value.trim();
-      const password = el("authPassword").value;
-      showNotice("authNotice", "");
-      const { error } = await sb.auth.signUp({ email, password });
-      if (error) {
-        showNotice("authNotice", error.message);
+      if (editingId && !forceNew) {
+        const { error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id);
+        if (error) throw error;
+        savedId = editingId;
       } else {
-        showNotice("authNotice", "Konto wurde erstellt. Bitte einloggen. Falls Supabase eine E-Mail-Bestätigung verlangt, bitte E-Mail prüfen.");
-      }
-    }
-
-    async function login() {
-      const email = el("authEmail").value.trim();
-      const password = el("authPassword").value;
-      showNotice("authNotice", "");
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) showNotice("authNotice", error.message);
-    }
-
-    async function logout() {
-      await sb.auth.signOut();
-    }
-
-    async function loadAccess() {
-      if (!currentUser) return null;
-      isAdmin = String(currentUser.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-      const { data, error } = await sb.from("user_access").select("*").eq("user_id", currentUser.id).maybeSingle();
-      if (error) {
-        showNotice("accessNotice", "Freigabe konnte nicht geladen werden: " + error.message);
-        return null;
-      }
-      currentAccess = data;
-      return data;
-    }
-
-    function applyAccessVisibility() {
-      const approved = isAdmin || currentAccess?.status === "approved";
-
-      el("authCard").classList.add("hidden");
-      el("userCard").classList.remove("hidden");
-      el("userEmail").textContent = currentUser?.email || "";
-
-      el("usersButton").classList.toggle("hidden", !isAdmin);
-      el("poolAdminButton").classList.toggle("hidden", !isAdmin);
-      el("tabAdminPool").classList.toggle("hidden", !isAdmin);
-
-      if (!approved) {
-        el("appContent").classList.add("hidden");
-        showNotice("accessNotice", currentAccess?.status === "blocked"
-          ? "Dieses Konto wurde gesperrt."
-          : "Dein Konto wartet noch auf Freigabe durch Admin.");
-        return;
+        const { data, error } = await sb.from("foods").insert(payload).select("id").single();
+        if (error) throw error;
+        savedId = data.id;
       }
 
-      showNotice("accessNotice", "");
-      el("appContent").classList.remove("hidden");
-    }
-
-    async function loadOptions() {
-      const { data, error } = await sb.from("option_values").select("*").eq("active", true).order("value", { ascending: true });
-      if (error) {
-        console.warn(error);
-        return;
+      if (isCurrentAdmin()) {
+        await syncAdminFoodToPool(savedId, item);
       }
-      optionValues = data || [];
-      renderDatalists();
+
+      showMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
+      await loadFoods();
+      await loadPoolFoods();
+      newFood();
+    } catch (error) {
+      showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
+    }
+  }
+  async function syncAdminFoodToPool(foodId, item) {
+    if (!isCurrentAdmin()) return;
+    const payload = { ...appFoodToDb(item), admin_food_id: foodId, updated_by: currentUser.email, active: true };
+    const { data: existing, error: selectError } = await sb.from("food_pool").select("id").eq("admin_food_id", foodId).maybeSingle();
+    if (selectError) throw selectError;
+    if (existing?.id) {
+      const { error } = await sb.from("food_pool").update(payload).eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from("food_pool").insert(payload);
+      if (error) throw error;
+    }
+  }
+  function newFood() {
+    editingId = null;
+    editingMode = "own";
+    selectedPoolFoodIdForChange = null;
+    fields.forEach(id => el(id).value = "");
+    ["brand", "sort", "packaging", "weight", "lifeAge"].forEach(id => el(id).value = "");
+    el("nfeFresh").textContent = "–";
+    el("nfeDry").textContent = "–";
+    el("rating").textContent = "";
+    el("rating").className = "rating";
+    currentResult = null;
+    clearLastValues();
+    el("saveTitle").textContent = "Dieses Futter speichern";
+    el("saveFoodButton").textContent = "Futter speichern";
+    el("saveAsNewButton").style.display = "none";
+    setFoodSuggestButtonVisibility();
+    setPoolChangeButtonVisible(false);
+    renderFoods();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function selectFood(id) {
+    const item = foods.find(f => f.id === id);
+    if (!item) return;
+    selectedPoolFoodIdForChange = null;
+    fillForm(item);
+    editingId = id;
+    editingMode = "own";
+    el("saveTitle").textContent = "Futter bearbeiten";
+    el("saveFoodButton").textContent = "Änderung speichern";
+    el("saveAsNewButton").style.display = "inline-flex";
+    setPoolChangeButtonVisible(false);
+    setFoodSuggestButtonVisibility();
+    renderFoods();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function selectPoolFood(id) {
+    const item = poolFoods.find(f => f.id === id);
+    if (!item) return;
+    fillForm(item);
+    if (isCurrentAdmin()) {
+      // Admin bearbeitet über verknüpftes eigenes Futter, falls vorhanden, sonst direkt Pooländerung vorschlagen nicht nötig
+      editingId = item.sourceFoodId || null;
+      editingMode = "own";
+      el("saveTitle").textContent = "Pool-Futter bearbeiten";
+      el("saveFoodButton").textContent = editingId ? "Änderung speichern" : "Futter speichern";
+      el("saveAsNewButton").style.display = "inline-flex";
+      setPoolChangeButtonVisible(false);
+    } else {
+      editingId = null;
+      editingMode = "poolChange";
+      selectedPoolFoodIdForChange = id;
+      el("saveTitle").textContent = "Futterpool-Änderung vorschlagen";
+      el("saveFoodButton").textContent = "In eigener Liste speichern";
+      el("saveAsNewButton").style.display = "inline-flex";
+      setPoolChangeButtonVisible(true);
+    }
+    setFoodSuggestButtonVisibility();
+    renderFoods();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function fillForm(item) {
+    el("protein").value = item.values?.protein ?? "";
+    el("fett").value = item.values?.fett ?? "";
+    el("faser").value = item.values?.faser ?? "";
+    el("asche").value = item.values?.asche ?? "";
+    el("feuchte").value = item.values?.feuchte ?? "";
+    el("brand").value = item.brand || "";
+    el("sort").value = item.sort || "";
+    el("packaging").value = item.packaging || "";
+    el("weight").value = item.weight || "";
+    el("lifeAge").value = item.lifeAge || "";
+    calculate();
+  }
+  function clearField(id) {
+    el(id).value = "";
+  }
+
+  function setFoodSuggestButtonVisibility() {
+    const btn = el("suggestPoolButton");
+    if (!btn) return;
+    btn.style.display = currentUser && !isCurrentAdmin() ? "inline-flex" : "none";
+  }
+  function setPoolChangeButtonVisible(show) {
+    const btn = el("suggestPoolChangeButton");
+    if (!btn) return;
+    btn.style.display = show && currentUser && !isCurrentAdmin() ? "inline-flex" : "none";
+  }
+
+  function getCurrentFoodSource() {
+    return activeFoodFilter === "pool" ? poolFoods : foods;
+  }
+  function getFilteredFoods() {
+    const search = String(el("foodSearch")?.value || "").toLocaleLowerCase("de").trim();
+    let source;
+    if (activeFoodFilter === "pool") {
+      source = poolFoods;
+    } else if (activeFoodFilter === "fav") {
+      source = [...foods.filter(f => f.favorite), ...poolFoods.filter(f => poolFavoriteIds.has(f.id))];
+    } else {
+      source = foods.filter(item => activeFoodFilter === "all" || item.result?.ratingClass === activeFoodFilter);
+    }
+    if (search) {
+      source = source.filter(item => [item.brand, item.sort, item.packaging, item.weight, item.lifeAge].join(" ").toLocaleLowerCase("de").includes(search));
+    }
+    return source;
+  }
+  function setFoodFilter(filter) {
+    activeFoodFilter = filter || "all";
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.filter === activeFoodFilter);
+    });
+    renderFoods();
+  }
+  function clearFoodSearch() {
+    el("foodSearch").value = "";
+    renderFoods();
+  }
+  function renderFoods() {
+    const list = el("savedList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    const items = getFilteredFoods();
+
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = activeFoodFilter === "pool" ? "Noch kein Futterpool geladen." : "Noch keine Futter gespeichert.";
+      list.appendChild(empty);
+      return;
     }
 
-    function renderDatalists() {
-      const map = { brand: "brandList", sort: "sortList", packaging: "packagingList", weight: "weightList", life_age: "lifeAgeList" };
-      Object.entries(map).forEach(([cat, id]) => {
-        const list = el(id);
-        list.innerHTML = "";
-        optionValues.filter(o => o.category === cat).forEach(o => {
-          const option = document.createElement("option");
-          option.value = o.value;
-          list.appendChild(option);
-        });
-      });
-    }
-
-    async function loadOwnFoods() {
-      if (!currentUser) return;
-      const { data, error } = await sb.from("foods").select("*").eq("user_id", currentUser.id).order("updated_at", { ascending: false });
-      if (error) {
-        showNotice("formNotice", "Eigene Futter konnten nicht geladen werden: " + error.message);
-        return;
-      }
-      ownFoods = data || [];
-      renderOwnFoods();
-    }
-
-    async function loadPool() {
-      const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(300);
-      if (error) {
-        showNotice("formNotice", "Futterpool konnte nicht geladen werden: " + error.message);
-        return;
-      }
-      poolFoods = data || [];
-      renderPoolFoods();
-      renderAdminPoolFoods();
-    }
-
-    function renderOwnFoods() {
-      const list = el("ownList");
-      list.innerHTML = "";
-      if (!ownFoods.length) {
-        list.innerHTML = '<div class="empty">Noch keine eigenen Futter.</div>';
-        return;
-      }
-      ownFoods.forEach(item => list.appendChild(makeFoodNode(item, "own")));
-    }
-
-    function renderPoolFoods() {
-      const list = el("poolList");
-      list.innerHTML = "";
-      if (!poolFoods.length) {
-        list.innerHTML = '<div class="empty">Noch kein Futterpool geladen.</div>';
-        return;
-      }
-      poolFoods.forEach(item => list.appendChild(makeFoodNode(item, "poolView")));
-    }
-
-    function renderAdminPoolFoods() {
-      const list = el("adminPoolList");
-      list.innerHTML = "";
-      if (!poolFoods.length) {
-        list.innerHTML = '<div class="empty">Noch kein Futterpool geladen.</div>';
-        return;
-      }
-      poolFoods.forEach(item => list.appendChild(makeFoodNode(item, "poolAdmin")));
-    }
-
-    function makeFoodNode(item, mode) {
+    items.forEach(item => {
+      const isPool = activeFoodFilter === "pool" || (!!item._db && item._db.admin_food_id !== undefined);
       const row = document.createElement("div");
-      row.className = "food-item";
+      row.className = "food-item" + (editingId === item.id ? " selected" : "");
+      row.onclick = () => isPool ? selectPoolFood(item.id) : selectFood(item.id);
 
       const main = document.createElement("div");
-      main.innerHTML = `
-        <div class="food-title">${escapeHtml(foodTitle(item))}</div>
-        <div class="food-sub">
-          ${escapeHtml(foodSub(item))}<br>
-          <strong>NfE TM: ${fmt(item.nfe_dry)}</strong> · NfE: ${fmt(item.nfe_fresh)} · ${escapeHtml(item.rating_text || "")}
-        </div>
-      `;
+      main.className = "food-main";
+
+      const top = document.createElement("div");
+      top.className = "food-top " + (item.result?.ratingClass || "");
+      top.innerHTML = '<span class="food-brand">' + xmlEscape(item.brand || "Unbenanntes Futter") + '</span>'
+        + (item.sort ? '<span class="food-sort">' + xmlEscape(item.sort) + '</span>' : "");
+
+      const meta = document.createElement("div");
+      meta.className = "food-meta";
+      meta.innerHTML =
+        (item.packaging || item.weight || item.lifeAge ? xmlEscape([item.packaging, item.weight, item.lifeAge].filter(Boolean).join(" · ")) + "<br>" : "")
+        + '<span class="food-rating ' + (item.result?.ratingClass || "") + '">' + xmlEscape(item.result?.ratingText || "") + '</span>'
+        + " · NfE TM: <strong>" + fmt(item.result?.nfeDry) + "</strong>"
+        + " · NfE: " + fmt(item.result?.nfeFresh);
+
+      main.appendChild(top);
+      main.appendChild(meta);
 
       const actions = document.createElement("div");
-      actions.className = "mini-actions";
+      actions.className = "food-actions";
 
-      if (mode === "own" || mode === "poolAdmin") {
-        const edit = document.createElement("button");
-        edit.className = "blue";
-        edit.textContent = "Bearbeiten";
-        edit.onclick = () => {
-          editingId = item.id;
-          editingMode = mode === "poolAdmin" ? "pool" : "own";
-          fillForm(item);
-          el("formTitle").textContent = editingMode === "pool" ? "Pool-Futter bearbeiten" : "Futter bearbeiten";
-          el("saveButton").textContent = "Änderung speichern";
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        };
-        actions.appendChild(edit);
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "fav-btn" + (item.favorite || poolFavoriteIds.has(item.id) ? " active" : "");
+      star.textContent = (item.favorite || poolFavoriteIds.has(item.id)) ? "★" : "☆";
+      star.onclick = (event) => {
+        event.stopPropagation();
+        isPool ? togglePoolFavorite(item.id) : toggleFavorite(item.id);
+      };
+      actions.appendChild(star);
 
-        const del = document.createElement("button");
-        del.className = "red";
-        del.textContent = "Löschen";
-        del.onclick = () => deleteFood(item.id, mode);
-        actions.appendChild(del);
-      }
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "delete-btn";
+      del.textContent = "×";
+      del.onclick = (event) => {
+        event.stopPropagation();
+        isPool && isCurrentAdmin() ? deletePoolFood(item.id) : (!isPool ? deleteFood(item.id) : null);
+      };
+      if (isPool && !isCurrentAdmin()) del.style.display = "none";
+      actions.appendChild(del);
 
       row.appendChild(main);
       row.appendChild(actions);
-      return row;
+      list.appendChild(row);
+    });
+  }
+  async function toggleFavorite(id) {
+    const item = foods.find(f => f.id === id);
+    if (!item) return;
+    const newVal = !item.favorite;
+    const { error } = await sb.from("foods").update({ favorite: newVal }).eq("id", id).eq("user_id", currentUser.id);
+    if (error) {
+      showMessage("syncNotice", "Favorit konnte nicht gespeichert werden: " + error.message);
+      return;
+    }
+    await loadFoods();
+  }
+  async function togglePoolFavorite(id) {
+    if (!currentUser) return;
+    if (poolFavoriteIds.has(id)) {
+      const { error } = await sb.from("pool_favorites").delete().eq("user_id", currentUser.id).eq("pool_food_id", id);
+      if (error) showMessage("syncNotice", "Favorit konnte nicht entfernt werden: " + error.message);
+    } else {
+      const { error } = await sb.from("pool_favorites").insert({ user_id: currentUser.id, pool_food_id: id });
+      if (error) showMessage("syncNotice", "Favorit konnte nicht gespeichert werden: " + error.message);
+    }
+    await loadPoolFavorites();
+    await loadPoolFoods();
+    renderFoods();
+  }
+  async function deleteFood(id) {
+    if (!confirm("Futter wirklich löschen?")) return;
+    const { error } = await sb.from("foods").delete().eq("id", id).eq("user_id", currentUser.id);
+    if (error) {
+      showMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
+      return;
+    }
+    if (isCurrentAdmin()) {
+      const { error: poolError } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("admin_food_id", id);
+      if (poolError) console.warn(poolError);
+    }
+    await loadFoods();
+    await loadPoolFoods();
+    if (editingId === id) newFood();
+  }
+  async function deletePoolFood(id) {
+    if (!isCurrentAdmin()) return;
+    if (!confirm("Pool-Futter wirklich löschen?")) return;
+    const { error } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("id", id);
+    if (error) {
+      showMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
+      return;
+    }
+    await loadPoolFoods();
+  }
+  function toggleFoodList() {
+    const content = el("foodItemsContent");
+    content.classList.toggle("collapsed");
+    el("foodListToggle").classList.toggle("collapsed", content.classList.contains("collapsed"));
+  }
+
+  function openChooser(targetInput, optionsId, title) {
+    chooserTargetInput = targetInput;
+    chooserOptionsId = optionsId;
+    chooserTitleText = title;
+    el("chooserTitle").textContent = title;
+    el("chooserSearch").value = "";
+    el("chooserOverlay").classList.add("visible");
+    renderChooserList();
+
+    const saveBtn = el("chooserSaveNewButton");
+    if (saveBtn) saveBtn.style.display = isCurrentAdmin() ? "inline-flex" : "none";
+    const suggestBtn = el("chooserSuggestButton");
+    if (suggestBtn) suggestBtn.style.display = isCurrentAdmin() ? "none" : "inline-flex";
+
+    setTimeout(() => el("chooserSearch").focus(), 50);
+  }
+  function closeChooser(event) {
+    if (event && event.target && event.target.id !== "chooserOverlay") return;
+    el("chooserOverlay").classList.remove("visible");
+  }
+  function renderChooserList() {
+    const list = el("chooserList");
+    const search = String(el("chooserSearch")?.value || "").toLocaleLowerCase("de").trim();
+    list.innerHTML = "";
+    const values = (suggestionOptions[chooserOptionsId] || [])
+      .filter(value => !search || String(value).toLocaleLowerCase("de").includes(search))
+      .slice(0, 200);
+
+    if (!values.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Keine Einträge gefunden.";
+      list.appendChild(empty);
+      return;
     }
 
-    async function saveFood() {
-      if (!currentUser) return;
-      calculate();
-      const payload = formToFood();
-
-      try {
-        if (editingMode === "pool" && isAdmin) {
-          if (editingId) {
-            const { error } = await sb.from("food_pool").update({ ...payload, updated_by: currentUser.email }).eq("id", editingId);
-            if (error) throw error;
-            showNotice("formNotice", "Pool-Futter geändert.");
-          } else {
-            const { error } = await sb.from("food_pool").insert({ ...payload, updated_by: currentUser.email });
-            if (error) throw error;
-            showNotice("formNotice", "Pool-Futter gespeichert.");
-          }
-          await loadPool();
-        } else {
-          if (editingId) {
-            const { error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id);
-            if (error) throw error;
-            showNotice("formNotice", "Änderung gespeichert.");
-          } else {
-            const { error } = await sb.from("foods").insert({ ...payload, user_id: currentUser.id });
-            if (error) throw error;
-            showNotice("formNotice", "Futter gespeichert.");
-          }
-          await loadOwnFoods();
-        }
-
-        newFood();
-      } catch (error) {
-        showNotice("formNotice", "Speichern fehlgeschlagen: " + error.message);
-      }
-    }
-
-    async function deleteFood(id, mode) {
-      if (!confirm("Eintrag löschen?")) return;
-      try {
-        if (mode === "poolAdmin" && isAdmin) {
-          const { error } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("id", id);
-          if (error) throw error;
-          await loadPool();
-        } else {
-          const { error } = await sb.from("foods").delete().eq("id", id).eq("user_id", currentUser.id);
-          if (error) throw error;
-          await loadOwnFoods();
-        }
-        if (editingId === id) newFood();
-      } catch (error) {
-        showNotice("formNotice", "Löschen fehlgeschlagen: " + error.message);
-      }
-    }
-
-    function setTab(tab) {
-      activeTab = tab;
-      ["own", "pool", "adminPool"].forEach(name => {
-        const section = el(name + "Section");
-        const btn = el("tab" + name[0].toUpperCase() + name.slice(1));
-        if (section) section.classList.toggle("hidden", name !== tab);
-        if (btn) btn.classList.toggle("active", name === tab);
-      });
-
-      if (tab === "pool" || tab === "adminPool") loadPool();
-      newFood();
-    }
-
-    async function openUsersModal() {
-      if (!isAdmin) return;
-      el("usersOverlay").classList.add("visible");
-      await loadUsers();
-    }
-
-    function closeUsersModal(event) {
-      if (event && event.target && event.target.id !== "usersOverlay") return;
-      el("usersOverlay").classList.remove("visible");
-    }
-
-    async function loadUsers() {
-      const { data, error } = await sb.from("user_access").select("*").order("created_at", { ascending: false });
-      const list = el("usersList");
-      list.innerHTML = "";
-
-      if (error) {
-        list.innerHTML = '<div class="empty">Nutzer konnten nicht geladen werden: ' + escapeHtml(error.message) + '</div>';
-        return;
-      }
-
-      if (!data?.length) {
-        list.innerHTML = '<div class="empty">Noch keine Nutzer.</div>';
-        return;
-      }
-
-      data.forEach(user => {
-        const row = document.createElement("div");
-        row.className = "user-item";
-        const main = document.createElement("div");
-        main.innerHTML = `
-          <div class="food-title">${escapeHtml(user.email)}</div>
-          <div class="food-sub">Status: <span class="status-pill">${escapeHtml(user.status)}</span></div>
-        `;
-
-        const actions = document.createElement("div");
-        actions.className = "mini-actions";
-
-        const approve = document.createElement("button");
-        approve.className = "green";
-        approve.textContent = "Freigeben";
-        approve.onclick = () => setUserStatus(user.user_id, "approved");
-        actions.appendChild(approve);
-
-        const block = document.createElement("button");
-        block.className = "red";
-        block.textContent = "Sperren";
-        block.onclick = () => setUserStatus(user.user_id, "blocked");
-        actions.appendChild(block);
-
-        row.appendChild(main);
-        row.appendChild(actions);
-        list.appendChild(row);
-      });
-    }
-
-    async function setUserStatus(userId, status) {
-      const updates = {
-        status,
-        approved_at: status === "approved" ? new Date().toISOString() : null,
-        approved_by: currentUser.email
+    values.forEach(value => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chooser-item";
+      btn.textContent = value;
+      btn.onclick = () => {
+        el(chooserTargetInput).value = value;
+        closeChooser();
       };
-      const { error } = await sb.from("user_access").update(updates).eq("user_id", userId);
-      if (error) alert("Status konnte nicht gespeichert werden: " + error.message);
-      await loadUsers();
+      list.appendChild(btn);
+    });
+  }
+  function useFreeChooserText() {
+    const value = normalizeOptionValue(el("chooserSearch").value);
+    if (value && chooserTargetInput) el(chooserTargetInput).value = value;
+    closeChooser();
+  }
+  async function saveChooserTextAsOption() {
+    if (!isCurrentAdmin()) return;
+    const value = normalizeOptionValue(el("chooserSearch").value);
+    if (!value || !chooserOptionsId) return;
+    const ok = await addOptionValue(optionMap[chooserOptionsId].category, value);
+    if (ok) {
+      el(chooserTargetInput).value = value;
+      closeChooser();
     }
-
-    async function init() {
-      const { data } = await sb.auth.getSession();
-      await handleSession(data.session);
-
-      sb.auth.onAuthStateChange((_event, session) => {
-        handleSession(session);
-      });
-
-      ["protein","fat","fiber","ash","moisture"].forEach(id => {
-        el(id).addEventListener("input", calculate);
-      });
+  }
+  function optionValueExists(optionKeyOrCategory, value) {
+    const clean = normalizeOptionValue(value).toLocaleLowerCase("de");
+    const key = optionMap[optionKeyOrCategory] ? optionKeyOrCategory : categoryToOptionKey[optionKeyOrCategory];
+    return (suggestionOptions[key] || []).some(entry => normalizeOptionValue(entry).toLocaleLowerCase("de") === clean);
+  }
+  async function suggestChooserTextAsOption() {
+    const value = normalizeOptionValue(el("chooserSearch").value);
+    if (!value || !chooserOptionsId) return;
+    const ok = await suggestOptionValue(optionMap[chooserOptionsId].category, value, "chooser", "");
+    if (ok) {
+      el(chooserTargetInput).value = value;
+      closeChooser();
     }
+  }
+  async function suggestOptionValue(category, value, source, linkedSuggestionId) {
+    if (!currentUser) return false;
+    const clean = normalizeOptionValue(value);
+    if (!clean) return false;
+    if (optionValueExists(category, clean)) {
+      showMessage("notice", "Dieser Eintrag ist bereits vorhanden.");
+      return false;
+    }
+    const { error } = await sb.from("pool_suggestions").insert({
+      suggestion_type: "option",
+      status: "pending",
+      suggested_by: currentUser.id,
+      suggested_by_email: currentUser.email || "",
+      option_category: category,
+      option_value: clean,
+      admin_note: source || ""
+    });
+    if (error) {
+      showMessage("notice", "Listen-Vorschlag konnte nicht gesendet werden: " + error.message);
+      return false;
+    }
+    showMessage("notice", "Eintrag wurde als Listen-Vorschlag gesendet.");
+    return true;
+  }
+  function getMissingOptionsForFood(item) {
+    const pairs = [
+      ["brand", item.brand],
+      ["sort", item.sort],
+      ["packaging", item.packaging],
+      ["weight", item.weight],
+      ["life_age", item.lifeAge]
+    ];
+    return pairs.filter(([cat, value]) => normalizeOptionValue(value) && !optionValueExists(cat, value));
+  }
+  async function createOptionSuggestionsForFood(item, source) {
+    if (!currentUser || isCurrentAdmin()) return 0;
+    let count = 0;
+    for (const [category, value] of getMissingOptionsForFood(item)) {
+      const { error } = await sb.from("pool_suggestions").insert({
+        suggestion_type: "option",
+        status: "pending",
+        suggested_by: currentUser.id,
+        suggested_by_email: currentUser.email || "",
+        option_category: category,
+        option_value: normalizeOptionValue(value),
+        admin_note: source || ""
+      });
+      if (!error) count++;
+    }
+    return count;
+  }
+  async function addOptionValue(category, value) {
+    const clean = normalizeOptionValue(value);
+    if (!clean) return false;
+    if (optionValueExists(category, clean)) {
+      showMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+      return false;
+    }
+    const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
+    if (error) {
+      showMessage("optionNotice", "Eintrag konnte nicht gespeichert werden: " + error.message);
+      return false;
+    }
+    await loadOptions();
+    return true;
+  }
+  async function addOptionValueFromAdmin() {
+    const select = el("optionListSelect");
+    const value = el("optionNewValue").value;
+    const key = select.value;
+    const category = optionMap[key].category;
+    const ok = await addOptionValue(category, value);
+    if (ok) {
+      el("optionNewValue").value = "";
+      showMessage("optionNotice", "Eintrag gespeichert.");
+      renderOptionsAdmin();
+    }
+  }
+  function renderOptionsAdmin() {
+    const list = el("optionAdminList");
+    if (!list) return;
+    const key = el("optionListSelect")?.value || "brandOptions";
+    const category = optionMap[key].category;
+    const search = String(el("optionAdminSearch")?.value || "").toLocaleLowerCase("de").trim();
+    const rows = optionRows.filter(row => row.category === category && (!search || row.value.toLocaleLowerCase("de").includes(search)));
 
-    async function handleSession(session) {
-      currentUser = session?.user || null;
-      editingId = null;
-      currentResult = null;
-
-      if (!currentUser) {
-        el("authCard").classList.remove("hidden");
-        el("userCard").classList.add("hidden");
-        el("appContent").classList.add("hidden");
-        return;
-      }
-
-      await loadAccess();
-      applyAccessVisibility();
-
-      const approved = isAdmin || currentAccess?.status === "approved";
-      if (approved) {
+    list.innerHTML = "";
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty">Keine Einträge.</div>';
+      return;
+    }
+    rows.forEach(row => {
+      const div = document.createElement("div");
+      div.className = "option-admin-item";
+      const text = document.createElement("div");
+      text.className = "option-admin-text";
+      text.textContent = row.value;
+      const edit = document.createElement("button");
+      edit.className = "option-admin-edit";
+      edit.textContent = "ändern";
+      edit.onclick = async () => {
+        const next = prompt("Eintrag ändern:", row.value);
+        if (!next) return;
+        const { error } = await sb.from("option_values").update({ value: normalizeOptionValue(next) }).eq("id", row.id);
+        if (error) showMessage("optionNotice", error.message);
         await loadOptions();
-        await loadOwnFoods();
-        await loadPool();
+      };
+      const del = document.createElement("button");
+      del.className = "option-admin-delete";
+      del.textContent = "×";
+      del.onclick = async () => {
+        if (!confirm("Eintrag löschen?")) return;
+        const { error } = await sb.from("option_values").update({ active: false }).eq("id", row.id);
+        if (error) showMessage("optionNotice", error.message);
+        await loadOptions();
+      };
+      div.appendChild(text);
+      div.appendChild(edit);
+      div.appendChild(del);
+      list.appendChild(div);
+    });
+  }
+  function openListsAdmin() {
+    if (!isCurrentAdmin()) return;
+    el("adminOptionsOverlay").classList.add("visible");
+    el("adminOptionsOverlay").style.display = "flex";
+    renderOptionsAdmin();
+  }
+  function closeListsAdmin(event) {
+    if (event && event.target && event.target.id !== "adminOptionsOverlay") return;
+    el("adminOptionsOverlay").classList.remove("visible");
+    el("adminOptionsOverlay").style.display = "none";
+  }
+
+  async function suggestFoodForPool() {
+    if (!currentUser || isCurrentAdmin()) return;
+    const item = collectCurrentFood(false);
+    if (!item) return;
+    const { error } = await sb.from("pool_suggestions").insert({
+      suggestion_type: "new_food",
+      status: "pending",
+      suggested_by: currentUser.id,
+      suggested_by_email: currentUser.email || "",
+      ...appFoodToDb(item)
+    });
+    if (error) {
+      showMessage("notice", "Vorschlag konnte nicht gesendet werden: " + error.message);
+      return;
+    }
+    const optionCount = await createOptionSuggestionsForFood(item, "new_food");
+    showMessage("notice", optionCount ? "Futter wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Futter wurde als Pool-Vorschlag gesendet.");
+  }
+  async function suggestPoolFoodChange() {
+    if (!currentUser || isCurrentAdmin() || !selectedPoolFoodIdForChange) return;
+    const oldItem = poolFoods.find(item => item.id === selectedPoolFoodIdForChange);
+    const newItem = collectCurrentFood(false);
+    if (!oldItem || !newItem) return;
+
+    const { error } = await sb.from("pool_suggestions").insert({
+      suggestion_type: "change",
+      status: "pending",
+      suggested_by: currentUser.id,
+      suggested_by_email: currentUser.email || "",
+      target_pool_food_id: oldItem.id,
+      ...appFoodToDb(newItem),
+      old_food: oldItem,
+      new_food: newItem
+    });
+    if (error) {
+      showMessage("notice", "Änderungsvorschlag konnte nicht gesendet werden: " + error.message);
+      return;
+    }
+    const optionCount = await createOptionSuggestionsForFood(newItem, "change");
+    showMessage("notice", optionCount ? "Änderung wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Änderung wurde als Pool-Vorschlag gesendet.");
+  }
+
+  function openPrivacy() {
+    el("privacyOverlay").classList.add("visible");
+    el("privacyOverlay").style.display = "flex";
+  }
+  function closePrivacy(event) {
+    if (event && event.target && event.target.id !== "privacyOverlay") return;
+    el("privacyOverlay").classList.remove("visible");
+    el("privacyOverlay").style.display = "none";
+  }
+
+  async function openUsersAdmin() {
+    if (!isCurrentAdmin()) return;
+    el("userAccessOverlay").classList.add("visible");
+    el("userAccessOverlay").style.display = "flex";
+    await loadUsers();
+  }
+  function closeUsersAdmin(event) {
+    if (event && event.target && event.target.id !== "userAccessOverlay") return;
+    el("userAccessOverlay").classList.remove("visible");
+    el("userAccessOverlay").style.display = "none";
+  }
+  async function loadUsers() {
+    const { data, error } = await sb.from("user_access").select("*").order("created_at", { ascending: false });
+    const list = el("userAccessList");
+    list.innerHTML = "";
+    if (error) {
+      showMessage("userAccessNotice", "Nutzer konnten nicht geladen werden: " + error.message);
+      return;
+    }
+    accessUsers = data || [];
+    if (!accessUsers.length) {
+      list.innerHTML = '<div class="empty">Noch keine Nutzer.</div>';
+      return;
+    }
+    accessUsers.forEach(user => {
+      const row = document.createElement("div");
+      row.className = "user-access-item";
+      row.innerHTML =
+        '<div class="user-access-main"><div class="user-access-email">' + xmlEscape(user.email) + '</div>'
+        + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(user.status) + '</span></div></div>';
+      const actions = document.createElement("div");
+      actions.className = "user-access-actions";
+      const approve = document.createElement("button");
+      approve.className = "approve-user-btn";
+      approve.textContent = "Freigeben";
+      approve.onclick = () => setUserStatus(user.user_id, "approved");
+      const block = document.createElement("button");
+      block.className = "block-user-btn";
+      block.textContent = "Sperren";
+      block.onclick = () => setUserStatus(user.user_id, "blocked");
+      actions.appendChild(approve);
+      actions.appendChild(block);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+  async function setUserStatus(uid, status) {
+    const { error } = await sb.from("user_access").update({
+      status,
+      approved_at: status === "approved" ? new Date().toISOString() : null,
+      approved_by: currentUser.email
+    }).eq("user_id", uid);
+    if (error) showMessage("userAccessNotice", "Status konnte nicht gespeichert werden: " + error.message);
+    await loadUsers();
+  }
+
+  function getPoolSuggestionKind(item) {
+    return item.suggestion_type || "new_food";
+  }
+  function getPendingPoolSuggestions() {
+    return poolSuggestions.filter(item => item.status === "pending");
+  }
+  function getFilteredPoolSuggestions() {
+    const pending = getPendingPoolSuggestions();
+    if (activePoolSuggestionFilter === "all") return pending;
+    return pending.filter(item => getPoolSuggestionKind(item) === activePoolSuggestionFilter);
+  }
+  function setPoolSuggestionFilter(filter) {
+    activePoolSuggestionFilter = filter || "all";
+    updatePoolSuggestionTabs();
+    renderPoolSuggestionsAdmin();
+  }
+  function updatePoolSuggestionTabs() {
+    const pending = getPendingPoolSuggestions();
+    const counts = {
+      all: pending.length,
+      new_food: pending.filter(item => getPoolSuggestionKind(item) === "new_food").length,
+      change: pending.filter(item => getPoolSuggestionKind(item) === "change").length,
+      option: pending.filter(item => getPoolSuggestionKind(item) === "option").length
+    };
+    const labels = { all: "Alle", new_food: "Futter", change: "Änderungen", option: "Listen" };
+    document.querySelectorAll(".pool-suggestion-tab").forEach(btn => {
+      const filter = btn.dataset.poolSuggestionFilter;
+      btn.classList.toggle("active", filter === activePoolSuggestionFilter);
+      btn.textContent = labels[filter] + " (" + (counts[filter] || 0) + ")";
+    });
+  }
+  async function openPoolSuggestionsAdmin() {
+    if (!isCurrentAdmin()) return;
+    el("poolSuggestionsOverlay").classList.add("visible");
+    el("poolSuggestionsOverlay").style.display = "flex";
+    await loadPoolSuggestions();
+  }
+  function closePoolSuggestionsAdmin(event) {
+    if (event && event.target && event.target.id !== "poolSuggestionsOverlay") return;
+    el("poolSuggestionsOverlay").classList.remove("visible");
+    el("poolSuggestionsOverlay").style.display = "none";
+  }
+  async function loadPoolSuggestions() {
+    const { data, error } = await sb.from("pool_suggestions").select("*").eq("status", "pending").order("created_at", { ascending: false });
+    if (error) {
+      showMessage("poolSuggestionsNotice", "Vorschläge konnten nicht geladen werden: " + error.message);
+      return;
+    }
+    poolSuggestions = data || [];
+    updatePoolSuggestionTabs();
+    renderPoolSuggestionsAdmin();
+  }
+  function renderPoolSuggestionsAdmin() {
+    const list = el("poolSuggestionsList");
+    if (!list) return;
+    list.innerHTML = "";
+    updatePoolSuggestionTabs();
+    const pending = getFilteredPoolSuggestions();
+
+    if (!pending.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "Keine offenen Vorschläge.";
+      list.appendChild(empty);
+      return;
+    }
+
+    pending.forEach(item => {
+      const kind = getPoolSuggestionKind(item);
+      const row = document.createElement("div");
+      row.className = "pool-suggestion-item";
+
+      const kindEl = document.createElement("div");
+      kindEl.className = "pool-suggestion-kind";
+      kindEl.textContent = kind === "option" ? "Listen-Vorschlag" : (kind === "change" ? "Änderungsvorschlag" : "Neues Futter");
+
+      const title = document.createElement("div");
+      title.className = "pool-suggestion-title";
+      if (kind === "option") {
+        const label = optionMap[categoryToOptionKey[item.option_category]]?.title || item.option_category || "Liste";
+        title.textContent = label + ": " + (item.option_value || "");
+      } else {
+        title.textContent = foodLabel(dbFoodToApp(item));
       }
+
+      const meta = document.createElement("div");
+      meta.className = "pool-suggestion-meta";
+      meta.textContent = "Von: " + (item.suggested_by_email || "unbekannt") + " · " + (item.created_at || "–");
+
+      row.appendChild(kindEl);
+      row.appendChild(title);
+      row.appendChild(meta);
+
+      if (kind !== "option") {
+        const food = dbFoodToApp(item);
+        const values = document.createElement("div");
+        values.className = "pool-suggestion-values";
+        values.innerHTML = "NfE TM: <strong>" + fmt(food.result?.nfeDry) + "</strong> · NfE: " + fmt(food.result?.nfeFresh) + " · " + xmlEscape(food.result?.ratingText || "");
+        row.appendChild(values);
+
+        const analysis = document.createElement("div");
+        analysis.className = "pool-suggestion-analysis";
+        analysis.innerHTML = "<span>Protein " + fmt(food.values.protein) + "</span><span>Fett " + fmt(food.values.fett) + "</span><span>Faser " + fmt(food.values.faser) + "</span><span>Asche " + fmt(food.values.asche) + "</span><span>Feuchte " + fmt(food.values.feuchte) + "</span>";
+        row.appendChild(analysis);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "pool-suggestion-actions";
+      const approve = document.createElement("button");
+      approve.type = "button";
+      approve.className = kind === "option" ? "approve-option-btn" : "approve-pool-btn";
+      approve.textContent = kind === "option" ? "Eintrag speichern" : (kind === "change" ? "Änderung freigeben" : "Freigeben");
+      approve.onclick = () => approvePoolSuggestion(item.id);
+
+      const reject = document.createElement("button");
+      reject.type = "button";
+      reject.className = "reject-pool-btn";
+      reject.textContent = "Ablehnen";
+      reject.onclick = () => rejectPoolSuggestion(item.id);
+
+      actions.appendChild(approve);
+      actions.appendChild(reject);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  }
+  async function approvePoolSuggestion(id) {
+    const item = poolSuggestions.find(s => s.id === id);
+    if (!item) return;
+    const kind = getPoolSuggestionKind(item);
+    const now = new Date().toISOString();
+    try {
+      if (kind === "option") {
+        const category = item.option_category;
+        const value = item.option_value;
+        if (!optionValueExists(category, value)) {
+          const { error } = await sb.from("option_values").insert({ category, value, created_by: currentUser.email });
+          if (error) throw error;
+        }
+      } else if (kind === "change") {
+        const payload = {
+          brand: item.brand || "",
+          sort: item.sort || "",
+          packaging: item.packaging || "",
+          weight: item.weight || "",
+          life_age: item.life_age || "",
+          protein: item.protein,
+          fat: item.fat,
+          fiber: item.fiber,
+          ash: item.ash,
+          moisture: item.moisture,
+          nfe_fresh: item.nfe_fresh,
+          nfe_dry: item.nfe_dry,
+          rating_text: item.rating_text || "",
+          rating_class: item.rating_class || "",
+          updated_by: currentUser.email
+        };
+        const { error } = await sb.from("food_pool").update(payload).eq("id", item.target_pool_food_id);
+        if (error) throw error;
+      } else {
+        const food = dbFoodToApp(item);
+        const foodPayload = { ...appFoodToDb(food), user_id: currentUser.id, favorite: false };
+        const { data: saved, error: foodError } = await sb.from("foods").insert(foodPayload).select("id").single();
+        if (foodError) throw foodError;
+        const poolPayload = { ...appFoodToDb(food), admin_food_id: saved.id, active: true, updated_by: currentUser.email };
+        const { error: poolError } = await sb.from("food_pool").insert(poolPayload);
+        if (poolError) throw poolError;
+      }
+
+      const { error: updateError } = await sb.from("pool_suggestions").update({ status: "approved", reviewed_at: now, reviewed_by: currentUser.email }).eq("id", id);
+      if (updateError) throw updateError;
+
+      showMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
+      await Promise.all([loadPoolSuggestions(), loadOptions(), loadFoods(), loadPoolFoods()]);
+    } catch (error) {
+      showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
+    }
+  }
+  async function rejectPoolSuggestion(id) {
+    if (!confirm("Vorschlag ablehnen?")) return;
+    const { error } = await sb.from("pool_suggestions").update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: currentUser.email }).eq("id", id);
+    if (error) {
+      showMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message);
+      return;
+    }
+    showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt.");
+    await loadPoolSuggestions();
+  }
+
+  function downloadFoodList() {
+    const rows = [["Marke","Sorte","Verpackung","Gewicht","Lebensalter","Protein","Fett","Faser","Asche","Feuchte","NfE","NfE TM","Bewertung"]];
+    getFilteredFoods().forEach(item => rows.push([
+      item.brand, item.sort, item.packaging, item.weight, item.lifeAge,
+      item.values?.protein, item.values?.fett, item.values?.faser, item.values?.asche, item.values?.feuchte,
+      item.result?.nfeFresh, item.result?.nfeDry, item.result?.ratingText
+    ]));
+    downloadCsv("nfe-katze-futterliste.csv", rows);
+  }
+  function downloadSuggestionLists() {
+    const rows = [["Liste", "Eintrag"]];
+    optionRows.forEach(row => rows.push([optionMap[categoryToOptionKey[row.category]]?.title || row.category, row.value]));
+    downloadCsv("nfe-katze-listen.csv", rows);
+  }
+  function downloadCsv(filename, rows) {
+    const csv = rows.map(row => row.map(cell => '"' + String(cell ?? "").replace(/"/g, '""') + '"').join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function handleSession(session) {
+    currentUser = session?.user || null;
+    if (!currentUser) {
+      el("authCard").style.display = "";
+      el("userCard").style.display = "none";
+      el("accessCard").style.display = "none";
+      el("appContent").classList.remove("visible");
+      return;
     }
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("service-worker.js").catch(() => {});
-      });
-    }
+    await loadAccess();
+    applyAuthVisibility();
 
-    init();
-  </script>
+    if (isCurrentAdmin() || currentAccess?.status === "approved") {
+      await loadInitialData();
+      loadLastValues();
+    }
+  }
+  async function init() {
+    const { data } = await sb.auth.getSession();
+    await handleSession(data.session);
+
+    sb.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    fields.forEach(id => el(id).addEventListener("input", calculate));
+    el("foodSearch").addEventListener("input", renderFoods);
+    el("chooserSearch").addEventListener("input", renderChooserList);
+    el("optionAdminSearch").addEventListener("input", renderOptionsAdmin);
+
+    // Noch neutrale Startanzeige
+    setFoodFilter("all");
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+    });
+  }
+
+  init();
+</script>
+
 </body>
 </html>
