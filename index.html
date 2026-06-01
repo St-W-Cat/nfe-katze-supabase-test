@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>NfE-Rechner Katze</title>
-  <!-- Version: supabase-version5-korrigiert-admin-favoriten -->
+  <!-- Version: supabase-version6-anpassungen -->
   <style>
 
     :root {
@@ -336,19 +336,16 @@
     .rating.high { display: flex; color: var(--red); }
 
     .paw {
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
       display: block;
       flex: 0 0 auto;
       overflow: visible;
     }
-    .paw .shape {
-      fill: #ffffff;
-      stroke: currentColor;
-      stroke-width: 5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      vector-effect: non-scaling-stroke;
+    .paw .toe,
+    .paw .pad {
+      fill: currentColor;
+      stroke: none;
     }
 
     .error, .notice {
@@ -402,7 +399,7 @@
       stroke-linejoin: round;
       transition: transform .18s ease;
     }
-    .food-list-toggle.expanded svg {
+    .food-list-toggle:not(.collapsed) svg {
       transform: rotate(90deg);
     }
     .download-icon-btn {
@@ -505,12 +502,14 @@
       color: #ffffff;
     }
     .filter-fav {
-      background: #fff0b8;
-      color: #b87900;
+      background: #ffe58a;
+      color: #8a5a00;
+      border: 1px solid #ffd54d;
     }
     .filter-fav.active {
-      background: #d99a00;
-      color: #ffffff;
+      background: #f2b705;
+      color: #4b3200;
+      border-color: #f2b705;
     }
     .filter-pool {
       background: #e2f3ff;
@@ -603,6 +602,59 @@
       background: #fff0b8;
       color: #b87900;
     }
+
+    .fav-btn {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 14px;
+      background: #fff6cc;
+      color: #a66f00;
+      border: 1px solid #ffd86b;
+      font-size: 25px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(166, 111, 0, .10);
+    }
+    .fav-btn.active {
+      background: #ffd84d;
+      color: #5a3b00;
+      border-color: #ffc400;
+    }
+    .delete-btn {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      padding: 0;
+      border-radius: 14px;
+      background: #ffe8e8;
+      color: var(--red);
+      border: 1px solid #ffcaca;
+      font-size: 26px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(198, 40, 40, .08);
+    }
+    .load-more-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .load-more-btn {
+      min-width: 0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #e2f3ff;
+      color: #1d5f8f;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
     .food-item.pool-item {
       background: #f4fbff;
       border-color: #b8ddf5;
@@ -1104,6 +1156,13 @@
       color: var(--accent-dark);
       word-break: break-word;
     }
+    .last-login-info {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
     .logout-mini,
     .lists-mini,
     .users-mini,
@@ -1316,7 +1375,7 @@
 
     <section id="userCard" class="user-mini" style="display:none">
       <div class="auth-status">
-        <span class="auth-label">Angemeldet als <span id="userEmail" class="auth-email"></span></span>
+        <span class="auth-label">Angemeldet als <span id="userEmail" class="auth-email"></span><span id="lastLoginInfo" class="last-login-info"></span></span>
         <button id="openListsButton" class="lists-mini" onclick="openListsAdmin()" style="display:none">Listen</button>
         <button id="openUsersButton" class="users-mini" onclick="openUsersAdmin()" style="display:none">Nutzer</button>
         <button id="openPoolSuggestionsButton" class="pool-mini" onclick="openPoolSuggestionsAdmin()" style="display:none">Pool Vorschläge</button>
@@ -1414,7 +1473,7 @@
     </section>
 
     <section id="saveCard" class="card save-card visible">
-      <h2 id="saveTitle">Dieses Futter speichern</h2>
+      <h2 id="saveTitle">Futter bearbeiten</h2>
       <div class="save-grid">
         <div>
           <label for="brand">Marke</label>
@@ -1475,7 +1534,7 @@
       </div>
       <div class="actions">
         <button id="saveFoodButton" class="primary" onclick="saveFood()">Futter speichern</button>
-        <button id="saveAsNewButton" class="primary" onclick="saveFoodAsNew()" style="display:none">neues Futter</button>
+        <button id="saveAsNewButton" class="primary" onclick="saveFoodAsNew()" style="display:none">Als neues Futter speichern</button>
         <button id="suggestPoolButton" class="secondary pool-suggest-btn" onclick="suggestFoodForPool()">Futter vorschlagen</button>
         <button id="suggestPoolChangeButton" class="secondary pool-change-btn" onclick="suggestPoolFoodChange()" style="display:none">Änderung vorschlagen</button>
       </div>
@@ -1625,6 +1684,8 @@
 
   let foods = [];
   let poolFoods = [];
+  let poolFoodsTotal = 0;
+  let poolLoadLimit = 50;
   let poolFavoriteIds = new Set();
   let poolSuggestions = [];
   let accessUsers = [];
@@ -1770,6 +1831,8 @@
     el("authCard").style.display = currentUser ? "none" : "";
     el("userCard").style.display = currentUser ? "" : "none";
     el("userEmail").textContent = currentUser?.email || "";
+    const lastInfo = el("lastLoginInfo");
+    if (lastInfo) lastInfo.textContent = currentAccess?.last_login ? "Letzter Login: " + formatDateTime(currentAccess.last_login) : "Letzter Login: –";
     el("accessCard").style.display = currentUser && !approved ? "" : "none";
     el("appContent").classList.toggle("visible", !!currentUser && approved);
 
@@ -1851,12 +1914,12 @@
 
   function ratingPawSvg() {
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
-      + '<circle class="shape" cx="20" cy="22" r="8"></circle>'
-      + '<circle class="shape" cx="32" cy="16" r="8"></circle>'
-      + '<circle class="shape" cx="44" cy="22" r="8"></circle>'
-      + '<circle class="shape" cx="24" cy="36" r="7"></circle>'
-      + '<circle class="shape" cx="40" cy="36" r="7"></circle>'
-      + '<path class="shape" d="M19 48c3-11 23-11 26 0 2 8-8 10-13 5-5 5-15 3-13-5z"></path>'
+      + '<ellipse class="toe" cx="18" cy="22" rx="7" ry="9"></ellipse>'
+      + '<ellipse class="toe" cx="31" cy="16" rx="7" ry="9"></ellipse>'
+      + '<ellipse class="toe" cx="44" cy="22" rx="7" ry="9"></ellipse>'
+      + '<ellipse class="toe" cx="23" cy="34" rx="6" ry="8"></ellipse>'
+      + '<ellipse class="toe" cx="40" cy="34" rx="6" ry="8"></ellipse>'
+      + '<path class="pad" d="M19 49c0-10 7-17 13-17s13 7 13 17c0 6-5 9-10 6-2-1-4-2-6 0-5 3-10 0-10-6z"></path>'
       + '</svg>';
   }
 
@@ -1933,7 +1996,7 @@
   }
   function collectCurrentFood(forceNew) {
     if (!calculate()) return null;
-    const existingItem = editingId && !forceNew ? foods.find(f => f.id === editingId) : null;
+    const existingItem = editingId && !forceNew ? (foods.find(f => f.id === editingId) || poolFoods.find(f => f.id === editingId)) : null;
     return {
       id: forceNew ? crypto.randomUUID() : (editingId || crypto.randomUUID()),
       brand: el("brand").value.trim(),
@@ -1982,8 +2045,9 @@
           showMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        await loadPoolFoods();
-        newFood();
+        await loadPoolFoods(false);
+        updateFoodFilterLabels();
+        renderFoods();
         return;
       }
 
@@ -1999,7 +2063,8 @@
 
       showMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
       await loadFoods();
-      newFood();
+      updateFoodFilterLabels();
+      renderFoods();
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
@@ -2031,7 +2096,7 @@
     el("rating").className = "rating";
     currentResult = null;
     clearLastValues();
-    el("saveTitle").textContent = isCurrentAdmin() ? "Futterpool-Eintrag speichern" : "Dieses Futter speichern";
+    el("saveTitle").textContent = "Futter bearbeiten";
     el("saveFoodButton").textContent = isCurrentAdmin() ? "Im Futterpool speichern" : "Futter speichern";
     el("saveAsNewButton").style.display = "none";
     setFoodSuggestButtonVisibility();
@@ -2048,11 +2113,11 @@
     editingMode = "own";
     el("saveTitle").textContent = "Futter bearbeiten";
     el("saveFoodButton").textContent = "Änderung speichern";
-    el("saveAsNewButton").style.display = "inline-flex";
+    el("saveAsNewButton").style.display = isCurrentAdmin() ? "inline-flex" : "none";
     setPoolChangeButtonVisible(false);
     setFoodSuggestButtonVisibility();
     renderFoods();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Beim Auswählen nicht automatisch springen.
   }
   function selectPoolFood(id) {
     const item = poolFoods.find(f => f.id === id);
@@ -2061,7 +2126,7 @@
     if (isCurrentAdmin()) {
       editingId = item.id;
       editingMode = "poolAdmin";
-      el("saveTitle").textContent = "Pool-Futter bearbeiten";
+      el("saveTitle").textContent = "Futter bearbeiten";
       el("saveFoodButton").textContent = "Änderung speichern";
       el("saveAsNewButton").style.display = "inline-flex";
       setPoolChangeButtonVisible(false);
@@ -2069,14 +2134,14 @@
       editingId = null;
       editingMode = "poolChange";
       selectedPoolFoodIdForChange = id;
-      el("saveTitle").textContent = "Futterpool-Änderung vorschlagen";
-      el("saveFoodButton").textContent = "In eigener Liste speichern";
-      el("saveAsNewButton").style.display = "inline-flex";
+      el("saveTitle").textContent = "Futter bearbeiten";
+      el("saveFoodButton").textContent = "Futter speichern";
+      el("saveAsNewButton").style.display = "none";
       setPoolChangeButtonVisible(true);
     }
     setFoodSuggestButtonVisibility();
     renderFoods();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Beim Auswählen nicht automatisch springen.
   }
   function fillForm(item) {
     el("protein").value = item.values?.protein ?? "";
@@ -2143,7 +2208,7 @@
       high: countByRating(base, "high"),
       all: base.length,
       fav: favorites.length,
-      pool: poolFoods.length
+      pool: poolFoodsTotal || poolFoods.length
     };
   }
 
@@ -2259,6 +2324,21 @@
       row.appendChild(actions);
       list.appendChild(row);
     });
+
+    if (poolFoods.length < poolFoodsTotal && (activeFoodFilter === "pool" || isCurrentAdmin())) {
+      const moreRow = document.createElement("div");
+      moreRow.className = "load-more-row";
+      const moreBtn = document.createElement("button");
+      moreBtn.type = "button";
+      moreBtn.className = "load-more-btn";
+      moreBtn.textContent = "Weitere laden (" + poolFoods.length + " von " + poolFoodsTotal + ")";
+      moreBtn.onclick = (event) => {
+        event.stopPropagation();
+        loadMorePoolFoods();
+      };
+      moreRow.appendChild(moreBtn);
+      list.appendChild(moreRow);
+    }
   }
   async function toggleFavorite(id) {
     const item = foods.find(f => f.id === id);
@@ -2637,6 +2717,7 @@
         + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(statusText(user.status)) + '</span>'
         + '<div class="user-access-date">Angelegt: ' + xmlEscape(formatDateTime(user.created_at)) + '</div>'
         + '<div class="user-access-date">Freigegeben: ' + xmlEscape(formatDateTime(user.approved_at)) + '</div>'
+        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login)) + '</div>'
         + '</div></div>';
 
       const actions = document.createElement("div");
@@ -2851,24 +2932,34 @@
     }
   }
   async function rejectPoolSuggestion(id) {
-    if (!confirm("Vorschlag ablehnen?")) return;
-    const { error } = await sb.from("pool_suggestions").update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: currentUser.email }).eq("id", id);
+    if (!confirm("Vorschlag ablehnen und automatisch löschen?")) return;
+    const { error } = await sb.from("pool_suggestions").delete().eq("id", id);
     if (error) {
       showMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message);
       return;
     }
-    showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt.");
+    showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
     await loadPoolSuggestions();
   }
 
-  function downloadFoodList() {
+  async function downloadFoodList() {
     const rows = [["Marke","Sorte","Verpackung","Gewicht","Lebensalter","Protein","Fett","Faser","Asche","Feuchte","NfE","NfE TM","Bewertung"]];
-    getFilteredFoods().forEach(item => rows.push([
+    // Nutzer: nur eigene gespeicherte Liste. Admin: kompletter Futterpool, unabhängig von der 50er-Anzeige.
+    let source = foods;
+    if (isCurrentAdmin()) {
+      const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(10000);
+      if (error) {
+        showMessage("syncNotice", "Download fehlgeschlagen: " + error.message);
+        return;
+      }
+      source = (data || []).map(row => ({ ...dbFoodToApp(row), poolId: row.id }));
+    }
+    source.forEach(item => rows.push([
       item.brand, item.sort, item.packaging, item.weight, item.lifeAge,
       item.values?.protein, item.values?.fett, item.values?.faser, item.values?.asche, item.values?.feuchte,
       item.result?.nfeFresh, item.result?.nfeDry, item.result?.ratingText
     ]));
-    downloadCsv("nfe-katze-futterliste.csv", rows);
+    downloadCsv(isCurrentAdmin() ? "nfe-katze-futterpool-admin.csv" : "nfe-katze-meine-futterliste.csv", rows);
   }
   function downloadSuggestionLists() {
     const rows = [["Liste", "Eintrag"]];
