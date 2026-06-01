@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>NfE-Rechner Katze</title>
-  <!-- Version: supabase-version4-resultate-und-speichern-fix -->
+  <!-- Version: supabase-version5-korrigiert-admin-favoriten -->
   <style>
 
     :root {
@@ -1266,6 +1266,13 @@
       line-height: 1.35;
     }
     .pool-change-col strong { color: var(--accent-dark); }
+    .user-access-date {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.35;
+    }
     .status-pill {
       display: inline-flex;
       border-radius: 999px;
@@ -1580,7 +1587,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v4 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v5 korrigiert · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1786,7 +1793,11 @@
   }
 
   async function loadInitialData() {
-    await Promise.all([loadOptions(), loadFoods(), loadPoolFoods(), loadPoolFavorites()]);
+    await loadOptions();
+    await loadFoods();
+    await loadPoolFavorites();
+    await loadPoolFoods();
+    updateFoodFilterLabels();
     renderFoods();
   }
 
@@ -1812,15 +1823,17 @@
       return;
     }
     foods = (data || []).map(dbFoodToApp);
+    updateFoodFilterLabels();
     renderFoods();
   }
   async function loadPoolFoods() {
-    const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(500);
+    const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(1000);
     if (error) {
       showMessage("syncNotice", "Futterpool konnte nicht geladen werden: " + error.message);
       return;
     }
     poolFoods = (data || []).map(row => ({ ...dbFoodToApp(row), favorite: poolFavoriteIds.has(row.id), poolId: row.id }));
+    updateFoodFilterLabels();
     renderFoods();
   }
   async function loadPoolFavorites() {
@@ -1832,6 +1845,8 @@
     }
     poolFavoriteIds = new Set((data || []).map(row => row.pool_food_id));
     poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(item.id) }));
+    updateFoodFilterLabels();
+    renderFoods();
   }
 
   function ratingPawSvg() {
@@ -1901,12 +1916,12 @@
     try {
       const payload = {};
       fields.forEach(id => payload[id] = el(id).value);
-      localStorage.setItem("nfe_supabase_last_values_v4", JSON.stringify(payload));
+      localStorage.setItem("nfe_supabase_last_values_v5_korrigiert", JSON.stringify(payload));
     } catch (e) {}
   }
   function loadLastValues() {
     try {
-      const raw = localStorage.getItem("nfe_supabase_last_values_v4");
+      const raw = localStorage.getItem("nfe_supabase_last_values_v5_korrigiert");
       if (!raw) return;
       const payload = JSON.parse(raw);
       fields.forEach(id => { if (payload[id]) el(id).value = payload[id]; });
@@ -1914,7 +1929,7 @@
     } catch (e) {}
   }
   function clearLastValues() {
-    try { localStorage.removeItem("nfe_supabase_last_values_v4"); } catch (e) {}
+    try { localStorage.removeItem("nfe_supabase_last_values_v5_korrigiert"); } catch (e) {}
   }
   function collectCurrentFood(forceNew) {
     if (!calculate()) return null;
@@ -1954,31 +1969,42 @@
     if (!item) return;
 
     try {
+      if (isCurrentAdmin()) {
+        const payload = { ...appFoodToDb(item), updated_by: currentUser.email, active: true };
+
+        if (editingId && !forceNew) {
+          const { error } = await sb.from("food_pool").update(payload).eq("id", editingId);
+          if (error) throw error;
+          showMessage("notice", "Futterpool-Eintrag geändert.");
+        } else {
+          const { error } = await sb.from("food_pool").insert(payload);
+          if (error) throw error;
+          showMessage("notice", "Futterpool-Eintrag gespeichert.");
+        }
+
+        await loadPoolFoods();
+        newFood();
+        return;
+      }
+
       const payload = { ...appFoodToDb(item), user_id: currentUser.id, favorite: !!item.favorite };
-      let savedId = item.id;
 
       if (editingId && !forceNew) {
         const { error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id);
         if (error) throw error;
-        savedId = editingId;
       } else {
-        const { data, error } = await sb.from("foods").insert(payload).select("id").single();
+        const { error } = await sb.from("foods").insert(payload);
         if (error) throw error;
-        savedId = data.id;
-      }
-
-      if (isCurrentAdmin()) {
-        await syncAdminFoodToPool(savedId, item);
       }
 
       showMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
       await loadFoods();
-      await loadPoolFoods();
       newFood();
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
   }
+
   async function syncAdminFoodToPool(foodId, item) {
     if (!isCurrentAdmin()) return;
     const payload = { ...appFoodToDb(item), admin_food_id: foodId, updated_by: currentUser.email, active: true };
@@ -1994,7 +2020,7 @@
   }
   function newFood() {
     editingId = null;
-    editingMode = "own";
+    editingMode = isCurrentAdmin() ? "poolAdmin" : "own";
     selectedPoolFoodIdForChange = null;
     fields.forEach(id => el(id).value = "");
     ["brand", "sort", "packaging", "weight", "lifeAge"].forEach(id => el(id).value = "");
@@ -2005,8 +2031,8 @@
     el("rating").className = "rating";
     currentResult = null;
     clearLastValues();
-    el("saveTitle").textContent = "Dieses Futter speichern";
-    el("saveFoodButton").textContent = "Futter speichern";
+    el("saveTitle").textContent = isCurrentAdmin() ? "Futterpool-Eintrag speichern" : "Dieses Futter speichern";
+    el("saveFoodButton").textContent = isCurrentAdmin() ? "Im Futterpool speichern" : "Futter speichern";
     el("saveAsNewButton").style.display = "none";
     setFoodSuggestButtonVisibility();
     setPoolChangeButtonVisible(false);
@@ -2033,11 +2059,10 @@
     if (!item) return;
     fillForm(item);
     if (isCurrentAdmin()) {
-      // Admin bearbeitet über verknüpftes eigenes Futter, falls vorhanden, sonst direkt Pooländerung vorschlagen nicht nötig
-      editingId = item.sourceFoodId || null;
-      editingMode = "own";
+      editingId = item.id;
+      editingMode = "poolAdmin";
       el("saveTitle").textContent = "Pool-Futter bearbeiten";
-      el("saveFoodButton").textContent = editingId ? "Änderung speichern" : "Futter speichern";
+      el("saveFoodButton").textContent = "Änderung speichern";
       el("saveAsNewButton").style.display = "inline-flex";
       setPoolChangeButtonVisible(false);
     } else {
@@ -2084,16 +2109,71 @@
   function getCurrentFoodSource() {
     return activeFoodFilter === "pool" ? poolFoods : foods;
   }
+  function getPoolFavoriteFoods() {
+    return poolFoods.filter(item => poolFavoriteIds.has(item.id));
+  }
+
+  function getOwnFavoriteFoods() {
+    return foods.filter(item => item.favorite);
+  }
+
+  function getBaseFoodsForCurrentUser() {
+    if (isCurrentAdmin()) {
+      // Admin: Alle = gesamte Poolliste.
+      return poolFoods;
+    }
+
+    // Nutzer: Alle = eigene Liste + ausgewählte Futterpool-Favoriten.
+    return [...foods, ...getPoolFavoriteFoods()];
+  }
+
+  function countByRating(items, ratingClass) {
+    return items.filter(item => item.result?.ratingClass === ratingClass).length;
+  }
+
+  function getFoodFilterCounts() {
+    const base = getBaseFoodsForCurrentUser();
+    const favorites = isCurrentAdmin()
+      ? getPoolFavoriteFoods()
+      : [...getOwnFavoriteFoods(), ...getPoolFavoriteFoods()];
+
+    return {
+      good: countByRating(base, "good"),
+      mid: countByRating(base, "mid"),
+      high: countByRating(base, "high"),
+      all: base.length,
+      fav: favorites.length,
+      pool: poolFoods.length
+    };
+  }
+
+  function updateFoodFilterLabels() {
+    const counts = getFoodFilterCounts();
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      const filter = btn.dataset.filter;
+      const label = btn.dataset.label || filter;
+      btn.textContent = label + " (" + (counts[filter] ?? 0) + ")";
+      btn.style.display = "inline-flex";
+    });
+  }
+
   function getFilteredFoods() {
     const search = String(el("foodSearch")?.value || "").toLocaleLowerCase("de").trim();
+    const base = getBaseFoodsForCurrentUser();
     let source;
+
     if (activeFoodFilter === "pool") {
       source = poolFoods;
     } else if (activeFoodFilter === "fav") {
-      source = [...foods.filter(f => f.favorite), ...poolFoods.filter(f => poolFavoriteIds.has(f.id))];
+      source = isCurrentAdmin()
+        ? getPoolFavoriteFoods()
+        : [...getOwnFavoriteFoods(), ...getPoolFavoriteFoods()];
+    } else if (activeFoodFilter === "all") {
+      source = base;
     } else {
-      source = foods.filter(item => activeFoodFilter === "all" || item.result?.ratingClass === activeFoodFilter);
+      source = base.filter(item => item.result?.ratingClass === activeFoodFilter);
     }
+
     if (search) {
       source = source.filter(item => [item.brand, item.sort, item.packaging, item.weight, item.lifeAge].join(" ").toLocaleLowerCase("de").includes(search));
     }
@@ -2104,6 +2184,7 @@
     document.querySelectorAll(".filter-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.filter === activeFoodFilter);
     });
+    updateFoodFilterLabels();
     renderFoods();
   }
   function clearFoodSearch() {
@@ -2126,7 +2207,7 @@
     }
 
     items.forEach(item => {
-      const isPool = activeFoodFilter === "pool" || (!!item._db && item._db.admin_food_id !== undefined);
+      const isPool = isCurrentAdmin() || activeFoodFilter === "pool" || (!!item.poolId) || (!!item._db && item._db.admin_food_id !== undefined);
       const row = document.createElement("div");
       row.className = "food-item" + (editingId === item.id ? " selected" : "");
       row.onclick = () => isPool ? selectPoolFood(item.id) : selectFood(item.id);
@@ -2189,6 +2270,8 @@
       return;
     }
     await loadFoods();
+    updateFoodFilterLabels();
+    renderFoods();
   }
   async function togglePoolFavorite(id) {
     if (!currentUser) return;
@@ -2201,6 +2284,7 @@
     }
     await loadPoolFavorites();
     await loadPoolFoods();
+    updateFoodFilterLabels();
     renderFoods();
   }
   async function deleteFood(id) {
@@ -2227,6 +2311,9 @@
       return;
     }
     await loadPoolFoods();
+    if (editingId === id) newFood();
+    updateFoodFilterLabels();
+    renderFoods();
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -2508,6 +2595,27 @@
     el("userAccessOverlay").classList.remove("visible");
     el("userAccessOverlay").style.display = "none";
   }
+  function formatDateTime(value) {
+    if (!value) return "–";
+    try {
+      return new Date(value).toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (e) {
+      return "–";
+    }
+  }
+
+  function statusText(status) {
+    if (status === "approved") return "Freigegeben";
+    if (status === "blocked") return "Gesperrt";
+    return "Wartet auf Freigabe";
+  }
+
   async function loadUsers() {
     const { data, error } = await sb.from("user_access").select("*").order("created_at", { ascending: false });
     const list = el("userAccessList");
@@ -2526,19 +2634,30 @@
       row.className = "user-access-item";
       row.innerHTML =
         '<div class="user-access-main"><div class="user-access-email">' + xmlEscape(user.email) + '</div>'
-        + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(user.status) + '</span></div></div>';
+        + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(statusText(user.status)) + '</span>'
+        + '<div class="user-access-date">Angelegt: ' + xmlEscape(formatDateTime(user.created_at)) + '</div>'
+        + '<div class="user-access-date">Freigegeben: ' + xmlEscape(formatDateTime(user.approved_at)) + '</div>'
+        + '</div></div>';
+
       const actions = document.createElement("div");
       actions.className = "user-access-actions";
-      const approve = document.createElement("button");
-      approve.className = "approve-user-btn";
-      approve.textContent = "Freigeben";
-      approve.onclick = () => setUserStatus(user.user_id, "approved");
-      const block = document.createElement("button");
-      block.className = "block-user-btn";
-      block.textContent = "Sperren";
-      block.onclick = () => setUserStatus(user.user_id, "blocked");
-      actions.appendChild(approve);
-      actions.appendChild(block);
+
+      if (user.status !== "approved") {
+        const approve = document.createElement("button");
+        approve.className = "approve-user-btn";
+        approve.textContent = "Freigeben";
+        approve.onclick = () => setUserStatus(user.user_id, "approved");
+        actions.appendChild(approve);
+      }
+
+      if (user.status !== "blocked") {
+        const block = document.createElement("button");
+        block.className = "block-user-btn";
+        block.textContent = "Sperren";
+        block.onclick = () => setUserStatus(user.user_id, "blocked");
+        actions.appendChild(block);
+      }
+
       row.appendChild(actions);
       list.appendChild(row);
     });
