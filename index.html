@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#8b5a2b">
+  <title>NfE Katze</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Version: supabase-version2-design-naeher-an-firebase -->
+  <style>
+    :root {
+      --bg1: #fff7ef;
+      --bg2: #fffdf8;
+      --card: #ffffff;
+      --text: #2f241f;
+      --muted: #766b63;
+      --line: #ead9c8;
+      --brown: #8b5a2b;
+      --brown-dark: #6f431f;
+      --cream: #fffaf4;
+      --cream2: #f4eadf;
+      --blue-bg: #e2f3ff;
+      --blue: #1d5f8f;
+      --green-bg: #e3f6ec;
+      --green: #267a46;
+      --red-bg: #ffe7e7;
+      --red: #b3261e;
+      --yellow-bg: #fff3bf;
+      --yellow: #7c5b00;
+      --shadow: 0 12px 34px rgba(70, 43, 20, .12);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255, 237, 214, .9), transparent 34rem),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      width: min(1040px, 100%);
+      margin: 0 auto;
+      padding: 14px 12px 80px;
+    }
+
+    header {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+      text-align: center;
+      padding: 8px 0 12px;
+    }
+
+    .logo {
+      width: min(230px, 74vw);
+      max-height: 130px;
+      object-fit: contain;
+      filter: drop-shadow(0 7px 12px rgba(90, 58, 28, .14));
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(25px, 7vw, 36px);
+      line-height: 1.05;
+      color: var(--brown-dark);
+      letter-spacing: -.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .version-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--brown);
+      background: #fff3e4;
+      border: 1px solid #f0d7bd;
+      padding: 5px 9px;
+      border-radius: 999px;
+    }
+
+    .card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 14px;
+      margin: 12px 0;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 11px;
+      font-size: 19px;
+      line-height: 1.2;
+      color: var(--brown-dark);
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .auth-email {
+      font-weight: 950;
+      color: var(--brown-dark);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    @media (max-width: 720px) {
+      .grid, .grid.three {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: #fffdfb;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #d8a35f;
+      box-shadow: 0 0 0 3px rgba(216,163,95,.18);
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 11px 14px;
+      background: var(--brown);
+      color: #fff;
+      font-weight: 950;
+      font-size: 14px;
+      cursor: pointer;
+      min-height: 42px;
+    }
+
+    button:hover { filter: brightness(.98); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .secondary { background: var(--cream2); color: var(--brown-dark); }
+    .blue { background: var(--blue-bg); color: var(--blue); }
+    .green { background: var(--green-bg); color: var(--green); }
+    .red { background: var(--red-bg); color: var(--red); }
+    .yellow { background: var(--yellow-bg); color: var(--yellow); }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .actions.center { justify-content: center; }
+
+    .notice {
+      display: none;
+      margin: 9px 0 0;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 850;
+    }
+
+    .notice.visible { display: block; }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 720px) {
+      .results { grid-template-columns: 1fr; }
+    }
+
+    .result-box {
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 11px;
+    }
+
+    .result-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .result-value {
+      margin-top: 3px;
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 1000;
+      color: var(--brown-dark);
+    }
+
+    .rating.good { color: #247a3e; }
+    .rating.mid { color: #a46b00; }
+    .rating.high { color: #b3261e; }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 9px 0;
+      margin: 4px 0;
+      background: linear-gradient(180deg, rgba(255,247,239,.96), rgba(255,247,239,.80));
+      backdrop-filter: blur(8px);
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--cream2);
+      color: var(--brown-dark);
+      padding: 10px 13px;
+      min-height: 38px;
+      font-size: 13px;
+    }
+
+    .tab.active {
+      background: var(--brown);
+      color: white;
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .food-item, .user-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+      background: #fffdfb;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 12px;
+    }
+
+    @media (max-width: 520px) {
+      .food-item, .user-item {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .food-title {
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 1000;
+      color: var(--brown-dark);
+    }
+
+    .food-sub {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+      font-weight: 650;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mini-actions button {
+      min-width: 0;
+      min-height: 0;
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 900;
+      padding: 20px;
+      background: #fffdfb;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+    }
+
+    .hidden { display: none !important; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      background: rgba(38, 28, 20, .30);
+    }
+
+    .overlay.visible { display: flex; }
+
+    .modal {
+      width: min(840px, 100%);
+      max-height: 88vh;
+      overflow: auto;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 14px;
+      box-shadow: 0 20px 70px rgba(38, 28, 20, .25);
+    }
+
+    .modal-head {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .modal-head h2 { margin: 0; }
+
+    .close {
+      min-height: 0;
+      border-radius: 999px;
+      background: var(--cream2);
+      color: var(--brown-dark);
+      padding: 8px 12px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-weight: 900;
+      font-size: 12px;
+      background: var(--blue-bg);
+      color: var(--blue);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img class="logo" src="header-logo.png" alt="NfE Katze Logo" onerror="this.style.display='none'">
+      <h1>NfE Katze</h1>
+      <div class="subtitle">Rechner und Futterliste für Katzenfutter</div>
+      <div class="version-note">Supabase v2 · Design angepasst</div>
+    </header>
+
+    <section id="authCard" class="card">
+      <h2>Login</h2>
+      <div class="grid">
+        <label>E-Mail
+          <input id="authEmail" type="email" autocomplete="email">
+        </label>
+        <label>Passwort
+          <input id="authPassword" type="password" autocomplete="current-password">
+        </label>
+      </div>
+      <div class="actions center">
+        <button onclick="login()">Einloggen</button>
+        <button class="secondary" onclick="signup()">Konto erstellen</button>
+      </div>
+      <div id="authNotice" class="notice"></div>
+    </section>
+
+    <section id="userCard" class="card hidden">
+      <div class="topbar">
+        <span>Angemeldet als <span id="userEmail" class="auth-email"></span></span>
+        <button id="usersButton" class="yellow hidden" onclick="openUsersModal()">Nutzer</button>
+        <button id="poolAdminButton" class="blue hidden" onclick="setTab('adminPool')">Pool verwalten</button>
+        <button class="secondary" onclick="logout()">Abmelden</button>
+      </div>
+      <div id="accessNotice" class="notice"></div>
+    </section>
+
+    <main id="appContent" class="hidden">
+      <section class="card">
+        <h2 id="formTitle">Dieses Futter speichern</h2>
+
+        <div class="grid">
+          <label>Marke
+            <input id="brand" list="brandList" placeholder="z. B. MAC's">
+          </label>
+          <label>Sorte
+            <input id="sort" list="sortList" placeholder="z. B. Huhn">
+          </label>
+          <label>Verpackung
+            <input id="packaging" list="packagingList" placeholder="Dose, Beutel ...">
+          </label>
+          <label>Gewicht
+            <input id="weight" list="weightList" placeholder="z. B. 400 g">
+          </label>
+          <label>Lebensalter
+            <input id="lifeAge" list="lifeAgeList" placeholder="Adult, Kitten ...">
+          </label>
+        </div>
+
+        <div class="grid" style="margin-top:10px">
+          <label>Rohprotein %
+            <input id="protein" type="number" step="0.01" inputmode="decimal">
+          </label>
+          <label>Rohfett %
+            <input id="fat" type="number" step="0.01" inputmode="decimal">
+          </label>
+          <label>Rohfaser %
+            <input id="fiber" type="number" step="0.01" inputmode="decimal">
+          </label>
+          <label>Rohasche %
+            <input id="ash" type="number" step="0.01" inputmode="decimal">
+          </label>
+          <label>Feuchtigkeit %
+            <input id="moisture" type="number" step="0.01" inputmode="decimal">
+          </label>
+        </div>
+
+        <datalist id="brandList"></datalist>
+        <datalist id="sortList"></datalist>
+        <datalist id="packagingList"></datalist>
+        <datalist id="weightList"></datalist>
+        <datalist id="lifeAgeList"></datalist>
+
+        <div class="actions center">
+          <button onclick="calculate()">Berechnen</button>
+          <button id="saveButton" class="green" onclick="saveFood()">Futter speichern</button>
+          <button class="secondary" onclick="newFood()">Neues Futter</button>
+        </div>
+
+        <div class="results">
+          <div class="result-box">
+            <div class="result-label">NfE Frischmasse</div>
+            <div id="nfeFresh" class="result-value">–</div>
+          </div>
+          <div class="result-box">
+            <div class="result-label">NfE Trockenmasse</div>
+            <div id="nfeDry" class="result-value">–</div>
+          </div>
+          <div class="result-box">
+            <div class="result-label">Bewertung</div>
+            <div id="rating" class="result-value rating">–</div>
+          </div>
+        </div>
+
+        <div id="formNotice" class="notice"></div>
+      </section>
+
+      <nav class="tabs">
+        <button id="tabOwn" class="tab active" onclick="setTab('own')">Meine Futter</button>
+        <button id="tabPool" class="tab" onclick="setTab('pool')">Futterpool</button>
+        <button id="tabAdminPool" class="tab hidden" onclick="setTab('adminPool')">Pool verwalten</button>
+      </nav>
+
+      <section id="ownSection" class="card">
+        <h2>Meine Futter</h2>
+        <div id="ownList" class="list"></div>
+      </section>
+
+      <section id="poolSection" class="card hidden">
+        <h2>Futterpool</h2>
+        <div class="actions center">
+          <button class="blue" onclick="loadPool()">Futterpool aktualisieren</button>
+        </div>
+        <div id="poolList" class="list"></div>
+      </section>
+
+      <section id="adminPoolSection" class="card hidden">
+        <h2>Pool verwalten</h2>
+        <div class="notice visible">Admin speichert hier direkt in den gemeinsamen Futterpool.</div>
+        <div id="adminPoolList" class="list" style="margin-top:10px"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="usersOverlay" class="overlay" onclick="closeUsersModal(event)">
+    <section class="modal" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <h2>Nutzer freigeben</h2>
+        <button class="close" onclick="closeUsersModal()">×</button>
+      </div>
+      <div id="usersList" class="list"></div>
+    </section>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://lhwpoxblptyhsyesnihn.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_6H76BTrYdXfoINXted_gzA_gfMKEyX1";
+    const ADMIN_EMAIL = "wroblewski.stefanie@gmail.com";
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let currentAccess = null;
+    let isAdmin = false;
+    let activeTab = "own";
+    let editingId = null;
+    let editingMode = "own";
+    let currentResult = null;
+
+    let ownFoods = [];
+    let poolFoods = [];
+    let optionValues = [];
+
+    function el(id) { return document.getElementById(id); }
+
+    function showNotice(id, text) {
+      const box = el(id);
+      if (!box) return;
+      box.textContent = text || "";
+      box.classList.toggle("visible", !!text);
+    }
+
+    function n(v) {
+      const num = Number(String(v ?? "").replace(",", "."));
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function fmt(v) {
+      const num = Number(v);
+      if (!Number.isFinite(num)) return "–";
+      return num.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[ch]));
+    }
+
+    function foodTitle(item) {
+      return [item.brand || "Unbenanntes Futter", item.sort].filter(Boolean).join(" – ");
+    }
+
+    function foodSub(item) {
+      return [item.packaging, item.weight, item.life_age].filter(Boolean).join(" · ");
+    }
+
+    function calculate() {
+      const protein = n(el("protein").value);
+      const fat = n(el("fat").value);
+      const fiber = n(el("fiber").value);
+      const ash = n(el("ash").value);
+      const moisture = n(el("moisture").value);
+
+      const nfeFresh = 100 - protein - fat - fiber - ash - moisture;
+      const dryMass = Math.max(0, 100 - moisture);
+      const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
+
+      let ratingText = "gut";
+      let ratingClass = "good";
+      if (nfeDry > 25) {
+        ratingText = "hoch";
+        ratingClass = "high";
+      } else if (nfeDry > 15) {
+        ratingText = "mittel";
+        ratingClass = "mid";
+      }
+
+      currentResult = { protein, fat, fiber, ash, moisture, nfeFresh, nfeDry, ratingText, ratingClass };
+
+      el("nfeFresh").textContent = fmt(nfeFresh);
+      el("nfeDry").textContent = fmt(nfeDry);
+      el("rating").textContent = ratingText;
+      el("rating").className = "result-value rating " + ratingClass;
+      return true;
+    }
+
+    function formToFood() {
+      if (!currentResult) calculate();
+      return {
+        brand: el("brand").value.trim(),
+        sort: el("sort").value.trim(),
+        packaging: el("packaging").value.trim(),
+        weight: el("weight").value.trim(),
+        life_age: el("lifeAge").value.trim(),
+        protein: currentResult.protein,
+        fat: currentResult.fat,
+        fiber: currentResult.fiber,
+        ash: currentResult.ash,
+        moisture: currentResult.moisture,
+        nfe_fresh: currentResult.nfeFresh,
+        nfe_dry: currentResult.nfeDry,
+        rating_text: currentResult.ratingText,
+        rating_class: currentResult.ratingClass
+      };
+    }
+
+    function fillForm(item) {
+      el("brand").value = item.brand || "";
+      el("sort").value = item.sort || "";
+      el("packaging").value = item.packaging || "";
+      el("weight").value = item.weight || "";
+      el("lifeAge").value = item.life_age || "";
+      el("protein").value = item.protein ?? "";
+      el("fat").value = item.fat ?? "";
+      el("fiber").value = item.fiber ?? "";
+      el("ash").value = item.ash ?? "";
+      el("moisture").value = item.moisture ?? "";
+      calculate();
+    }
+
+    function newFood() {
+      editingId = null;
+      editingMode = activeTab === "adminPool" && isAdmin ? "pool" : "own";
+      ["brand","sort","packaging","weight","lifeAge","protein","fat","fiber","ash","moisture"].forEach(id => el(id).value = "");
+      currentResult = null;
+      el("nfeFresh").textContent = "–";
+      el("nfeDry").textContent = "–";
+      el("rating").textContent = "–";
+      el("rating").className = "result-value rating";
+      el("formTitle").textContent = editingMode === "pool" ? "Pool-Futter eintragen" : "Dieses Futter speichern";
+      el("saveButton").textContent = "Futter speichern";
+      showNotice("formNotice", "");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function signup() {
+      const email = el("authEmail").value.trim();
+      const password = el("authPassword").value;
+      showNotice("authNotice", "");
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) {
+        showNotice("authNotice", error.message);
+      } else {
+        showNotice("authNotice", "Konto wurde erstellt. Bitte einloggen. Falls Supabase eine E-Mail-Bestätigung verlangt, bitte E-Mail prüfen.");
+      }
+    }
+
+    async function login() {
+      const email = el("authEmail").value.trim();
+      const password = el("authPassword").value;
+      showNotice("authNotice", "");
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) showNotice("authNotice", error.message);
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+    }
+
+    async function loadAccess() {
+      if (!currentUser) return null;
+      isAdmin = String(currentUser.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+      const { data, error } = await sb.from("user_access").select("*").eq("user_id", currentUser.id).maybeSingle();
+      if (error) {
+        showNotice("accessNotice", "Freigabe konnte nicht geladen werden: " + error.message);
+        return null;
+      }
+      currentAccess = data;
+      return data;
+    }
+
+    function applyAccessVisibility() {
+      const approved = isAdmin || currentAccess?.status === "approved";
+
+      el("authCard").classList.add("hidden");
+      el("userCard").classList.remove("hidden");
+      el("userEmail").textContent = currentUser?.email || "";
+
+      el("usersButton").classList.toggle("hidden", !isAdmin);
+      el("poolAdminButton").classList.toggle("hidden", !isAdmin);
+      el("tabAdminPool").classList.toggle("hidden", !isAdmin);
+
+      if (!approved) {
+        el("appContent").classList.add("hidden");
+        showNotice("accessNotice", currentAccess?.status === "blocked"
+          ? "Dieses Konto wurde gesperrt."
+          : "Dein Konto wartet noch auf Freigabe durch Admin.");
+        return;
+      }
+
+      showNotice("accessNotice", "");
+      el("appContent").classList.remove("hidden");
+    }
+
+    async function loadOptions() {
+      const { data, error } = await sb.from("option_values").select("*").eq("active", true).order("value", { ascending: true });
+      if (error) {
+        console.warn(error);
+        return;
+      }
+      optionValues = data || [];
+      renderDatalists();
+    }
+
+    function renderDatalists() {
+      const map = { brand: "brandList", sort: "sortList", packaging: "packagingList", weight: "weightList", life_age: "lifeAgeList" };
+      Object.entries(map).forEach(([cat, id]) => {
+        const list = el(id);
+        list.innerHTML = "";
+        optionValues.filter(o => o.category === cat).forEach(o => {
+          const option = document.createElement("option");
+          option.value = o.value;
+          list.appendChild(option);
+        });
+      });
+    }
+
+    async function loadOwnFoods() {
+      if (!currentUser) return;
+      const { data, error } = await sb.from("foods").select("*").eq("user_id", currentUser.id).order("updated_at", { ascending: false });
+      if (error) {
+        showNotice("formNotice", "Eigene Futter konnten nicht geladen werden: " + error.message);
+        return;
+      }
+      ownFoods = data || [];
+      renderOwnFoods();
+    }
+
+    async function loadPool() {
+      const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(300);
+      if (error) {
+        showNotice("formNotice", "Futterpool konnte nicht geladen werden: " + error.message);
+        return;
+      }
+      poolFoods = data || [];
+      renderPoolFoods();
+      renderAdminPoolFoods();
+    }
+
+    function renderOwnFoods() {
+      const list = el("ownList");
+      list.innerHTML = "";
+      if (!ownFoods.length) {
+        list.innerHTML = '<div class="empty">Noch keine eigenen Futter.</div>';
+        return;
+      }
+      ownFoods.forEach(item => list.appendChild(makeFoodNode(item, "own")));
+    }
+
+    function renderPoolFoods() {
+      const list = el("poolList");
+      list.innerHTML = "";
+      if (!poolFoods.length) {
+        list.innerHTML = '<div class="empty">Noch kein Futterpool geladen.</div>';
+        return;
+      }
+      poolFoods.forEach(item => list.appendChild(makeFoodNode(item, "poolView")));
+    }
+
+    function renderAdminPoolFoods() {
+      const list = el("adminPoolList");
+      list.innerHTML = "";
+      if (!poolFoods.length) {
+        list.innerHTML = '<div class="empty">Noch kein Futterpool geladen.</div>';
+        return;
+      }
+      poolFoods.forEach(item => list.appendChild(makeFoodNode(item, "poolAdmin")));
+    }
+
+    function makeFoodNode(item, mode) {
+      const row = document.createElement("div");
+      row.className = "food-item";
+
+      const main = document.createElement("div");
+      main.innerHTML = `
+        <div class="food-title">${escapeHtml(foodTitle(item))}</div>
+        <div class="food-sub">
+          ${escapeHtml(foodSub(item))}<br>
+          <strong>NfE TM: ${fmt(item.nfe_dry)}</strong> · NfE: ${fmt(item.nfe_fresh)} · ${escapeHtml(item.rating_text || "")}
+        </div>
+      `;
+
+      const actions = document.createElement("div");
+      actions.className = "mini-actions";
+
+      if (mode === "own" || mode === "poolAdmin") {
+        const edit = document.createElement("button");
+        edit.className = "blue";
+        edit.textContent = "Bearbeiten";
+        edit.onclick = () => {
+          editingId = item.id;
+          editingMode = mode === "poolAdmin" ? "pool" : "own";
+          fillForm(item);
+          el("formTitle").textContent = editingMode === "pool" ? "Pool-Futter bearbeiten" : "Futter bearbeiten";
+          el("saveButton").textContent = "Änderung speichern";
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+        actions.appendChild(edit);
+
+        const del = document.createElement("button");
+        del.className = "red";
+        del.textContent = "Löschen";
+        del.onclick = () => deleteFood(item.id, mode);
+        actions.appendChild(del);
+      }
+
+      row.appendChild(main);
+      row.appendChild(actions);
+      return row;
+    }
+
+    async function saveFood() {
+      if (!currentUser) return;
+      calculate();
+      const payload = formToFood();
+
+      try {
+        if (editingMode === "pool" && isAdmin) {
+          if (editingId) {
+            const { error } = await sb.from("food_pool").update({ ...payload, updated_by: currentUser.email }).eq("id", editingId);
+            if (error) throw error;
+            showNotice("formNotice", "Pool-Futter geändert.");
+          } else {
+            const { error } = await sb.from("food_pool").insert({ ...payload, updated_by: currentUser.email });
+            if (error) throw error;
+            showNotice("formNotice", "Pool-Futter gespeichert.");
+          }
+          await loadPool();
+        } else {
+          if (editingId) {
+            const { error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id);
+            if (error) throw error;
+            showNotice("formNotice", "Änderung gespeichert.");
+          } else {
+            const { error } = await sb.from("foods").insert({ ...payload, user_id: currentUser.id });
+            if (error) throw error;
+            showNotice("formNotice", "Futter gespeichert.");
+          }
+          await loadOwnFoods();
+        }
+
+        newFood();
+      } catch (error) {
+        showNotice("formNotice", "Speichern fehlgeschlagen: " + error.message);
+      }
+    }
+
+    async function deleteFood(id, mode) {
+      if (!confirm("Eintrag löschen?")) return;
+      try {
+        if (mode === "poolAdmin" && isAdmin) {
+          const { error } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("id", id);
+          if (error) throw error;
+          await loadPool();
+        } else {
+          const { error } = await sb.from("foods").delete().eq("id", id).eq("user_id", currentUser.id);
+          if (error) throw error;
+          await loadOwnFoods();
+        }
+        if (editingId === id) newFood();
+      } catch (error) {
+        showNotice("formNotice", "Löschen fehlgeschlagen: " + error.message);
+      }
+    }
+
+    function setTab(tab) {
+      activeTab = tab;
+      ["own", "pool", "adminPool"].forEach(name => {
+        const section = el(name + "Section");
+        const btn = el("tab" + name[0].toUpperCase() + name.slice(1));
+        if (section) section.classList.toggle("hidden", name !== tab);
+        if (btn) btn.classList.toggle("active", name === tab);
+      });
+
+      if (tab === "pool" || tab === "adminPool") loadPool();
+      newFood();
+    }
+
+    async function openUsersModal() {
+      if (!isAdmin) return;
+      el("usersOverlay").classList.add("visible");
+      await loadUsers();
+    }
+
+    function closeUsersModal(event) {
+      if (event && event.target && event.target.id !== "usersOverlay") return;
+      el("usersOverlay").classList.remove("visible");
+    }
+
+    async function loadUsers() {
+      const { data, error } = await sb.from("user_access").select("*").order("created_at", { ascending: false });
+      const list = el("usersList");
+      list.innerHTML = "";
+
+      if (error) {
+        list.innerHTML = '<div class="empty">Nutzer konnten nicht geladen werden: ' + escapeHtml(error.message) + '</div>';
+        return;
+      }
+
+      if (!data?.length) {
+        list.innerHTML = '<div class="empty">Noch keine Nutzer.</div>';
+        return;
+      }
+
+      data.forEach(user => {
+        const row = document.createElement("div");
+        row.className = "user-item";
+        const main = document.createElement("div");
+        main.innerHTML = `
+          <div class="food-title">${escapeHtml(user.email)}</div>
+          <div class="food-sub">Status: <span class="status-pill">${escapeHtml(user.status)}</span></div>
+        `;
+
+        const actions = document.createElement("div");
+        actions.className = "mini-actions";
+
+        const approve = document.createElement("button");
+        approve.className = "green";
+        approve.textContent = "Freigeben";
+        approve.onclick = () => setUserStatus(user.user_id, "approved");
+        actions.appendChild(approve);
+
+        const block = document.createElement("button");
+        block.className = "red";
+        block.textContent = "Sperren";
+        block.onclick = () => setUserStatus(user.user_id, "blocked");
+        actions.appendChild(block);
+
+        row.appendChild(main);
+        row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
+
+    async function setUserStatus(userId, status) {
+      const updates = {
+        status,
+        approved_at: status === "approved" ? new Date().toISOString() : null,
+        approved_by: currentUser.email
+      };
+      const { error } = await sb.from("user_access").update(updates).eq("user_id", userId);
+      if (error) alert("Status konnte nicht gespeichert werden: " + error.message);
+      await loadUsers();
+    }
+
+    async function init() {
+      const { data } = await sb.auth.getSession();
+      await handleSession(data.session);
+
+      sb.auth.onAuthStateChange((_event, session) => {
+        handleSession(session);
+      });
+
+      ["protein","fat","fiber","ash","moisture"].forEach(id => {
+        el(id).addEventListener("input", calculate);
+      });
+    }
+
+    async function handleSession(session) {
+      currentUser = session?.user || null;
+      editingId = null;
+      currentResult = null;
+
+      if (!currentUser) {
+        el("authCard").classList.remove("hidden");
+        el("userCard").classList.add("hidden");
+        el("appContent").classList.add("hidden");
+        return;
+      }
+
+      await loadAccess();
+      applyAccessVisibility();
+
+      const approved = isAdmin || currentAccess?.status === "approved";
+      if (approved) {
+        await loadOptions();
+        await loadOwnFoods();
+        await loadPool();
+      }
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
