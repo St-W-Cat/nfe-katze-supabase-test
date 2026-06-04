@@ -10,7 +10,10 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
   <title>NfE-Rechner Katze</title>
-  <!-- Version: supabase-version6-anpassungen -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <!-- Version: supabase-version6-2-korrigiert -->
   <style>
 
     :root {
@@ -1479,7 +1482,7 @@
           <div class="icon"><img src="header-logo.png" alt=""></div>
           <h1>NfE-Rechner für Katzen</h1>
         </div>
-        <button type="button" class="reset-calc-btn" aria-label="Rechner leeren" title="Rechner leeren" onclick="resetCalculator()">
+        <button type="button" class="reset-calc-btn" aria-label="Rechner und Futter bearbeiten leeren" title="Rechner und Futter bearbeiten leeren" onclick="resetFoodEditor()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"></path><path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L20 9"></path><path d="M4 17v-5h5"></path><path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4 15"></path></svg>
         </button>
       </div>
@@ -1956,13 +1959,13 @@
   }
 
   function ratingPawSvg() {
+    // echte Katzenpfote: 4 Zehen + ein Ballen
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
-      + '<ellipse class="toe" cx="19" cy="19" rx="6.5" ry="8.5" transform="rotate(-18 19 19)"></ellipse>'
-      + '<ellipse class="toe" cx="31.5" cy="14" rx="6.8" ry="9.2"></ellipse>'
-      + '<ellipse class="toe" cx="44" cy="19" rx="6.5" ry="8.5" transform="rotate(18 44 19)"></ellipse>'
-      + '<ellipse class="toe" cx="14" cy="33" rx="5.8" ry="7.4" transform="rotate(-28 14 33)"></ellipse>'
-      + '<ellipse class="toe" cx="50" cy="33" rx="5.8" ry="7.4" transform="rotate(28 50 33)"></ellipse>'
-      + '<path class="pad" d="M20.5 48.5c0-10.2 5.4-18.2 11.5-18.2s11.5 8 11.5 18.2c0 7.2-5.1 10.3-10.3 6.5-1.1-.8-2.9-.8-4 0-5.3 3.8-8.7.7-8.7-6.5z"></path>'
+      + '<ellipse class="toe" cx="18" cy="22" rx="6.2" ry="8.2" transform="rotate(-18 18 22)"></ellipse>'
+      + '<ellipse class="toe" cx="29" cy="16" rx="6.5" ry="8.8" transform="rotate(-5 29 16)"></ellipse>'
+      + '<ellipse class="toe" cx="40" cy="16" rx="6.5" ry="8.8" transform="rotate(5 40 16)"></ellipse>'
+      + '<ellipse class="toe" cx="50" cy="22" rx="6.2" ry="8.2" transform="rotate(18 50 22)"></ellipse>'
+      + '<path class="pad" d="M18.8 46.2c0-9.7 7.1-17.6 15.8-17.6s15.8 7.9 15.8 17.6c0 7.1-4.9 10.2-10.8 7.1-2.9-1.6-7.1-1.6-10 0-5.9 3.1-10.8 0-10.8-7.1z"></path>'
       + '</svg>';
   }
 
@@ -1993,6 +1996,20 @@
     currentResult = null;
     clearLastValues();
   }
+  function resetFoodEditor() {
+    // Reset-Pfeil leert Rechner UND den Bereich „Futter bearbeiten“ für Admin und Nutzer.
+    resetCalculator();
+    ["brand", "sort", "packaging", "weight", "lifeAge"].forEach(id => { if (el(id)) el(id).value = ""; });
+    editingId = null;
+    editingMode = isCurrentAdmin() ? "poolAdmin" : "own";
+    selectedPoolFoodIdForChange = null;
+    el("saveTitle").textContent = "Futter bearbeiten";
+    el("saveFoodButton").textContent = isCurrentAdmin() ? "Im Futterpool speichern" : "Futter speichern";
+    el("saveAsNewButton").style.display = "none";
+    setPoolChangeButtonVisible(false);
+    setFoodSuggestButtonVisibility();
+    renderFoods();
+  }
   function renderResult(result) {
     if (!result) return;
     currentResult = result;
@@ -2011,7 +2028,8 @@
       return false;
     }
     if (!hasAllCalculatorValues()) {
-      showCalculatorError("");
+      const hasAnyValue = fields.some(id => String(el(id)?.value || "").trim() !== "");
+      showCalculatorError(hasAnyValue ? "Bitte alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit." : "");
       return false;
     }
 
@@ -2112,7 +2130,7 @@
         await loadPoolFoods(false);
         updateFoodFilterLabels();
         renderFoods();
-        resetCalculator();
+        resetFoodEditor();
         return;
       }
 
@@ -2130,7 +2148,7 @@
       await loadFoods();
       updateFoodFilterLabels();
       renderFoods();
-      resetCalculator();
+      resetFoodEditor();
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
@@ -3074,6 +3092,15 @@
     URL.revokeObjectURL(a.href);
   }
 
+  async function updateCurrentUserLastLogin() {
+    if (!currentUser || isCurrentAdmin()) return;
+    try {
+      await sb.from("user_access").update({ last_login: new Date().toISOString() }).eq("user_id", currentUser.id);
+    } catch (e) {
+      console.warn("Letzter Login konnte nicht aktualisiert werden", e);
+    }
+  }
+
   async function handleSession(session) {
     currentUser = session?.user || null;
     if (!currentUser) {
@@ -3084,6 +3111,7 @@
       return;
     }
 
+    await updateCurrentUserLastLogin();
     await loadAccess();
     applyAuthVisibility();
 
@@ -3107,11 +3135,14 @@
 
     // Noch neutrale Startanzeige
     setFoodFilter("all");
+    if ("caches" in window) {
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v6-2-korrigiert").forEach(key => caches.delete(key))).catch(() => {});
+    }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=6.2").catch(() => {});
     });
   }
 
