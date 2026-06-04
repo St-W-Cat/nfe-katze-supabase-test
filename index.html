@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version23 -->
+  <!-- Version: supabase-version24 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v23 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v24 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2033,6 +2033,25 @@
     renderFoods();
   }
 
+  function refreshFoodViews() {
+    if (isCurrentAdmin() && activeFoodFilter === "all") activeFoodFilter = "pool";
+    updateFoodFilterLabels();
+    renderFoods();
+  }
+  function replaceLocalFood(list, savedItem) {
+    const savedId = String(savedItem.id);
+    const idx = list.findIndex(item => String(item.id) === savedId);
+    if (idx >= 0) return list.map(item => String(item.id) === savedId ? savedItem : item);
+    return [savedItem, ...list];
+  }
+  function removePendingSuggestionLocal(id) {
+    poolSuggestions = poolSuggestions.filter(item => String(item.id) !== String(id));
+    const btn = el("openPoolSuggestionsButton");
+    if (btn) btn.textContent = "Pool Vorschläge (" + getPendingPoolSuggestions().length + ")";
+    updatePoolSuggestionTabs();
+    renderPoolSuggestionsAdmin();
+  }
+
   function ratingPawSvg() {
     // Katzenpfote: 4 Zehen + 1 weicher Ballen, wie in der freigegebenen Vorschau.
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
@@ -2205,20 +2224,23 @@
         const payload = { ...appFoodToDb(item), updated_by: currentUser.email, active: true };
 
         if (editingId && !forceNew) {
-          const { error } = await sb.from("food_pool").update(payload).eq("id", editingId);
+          const { data: savedRow, error } = await sb.from("food_pool").update(payload).eq("id", editingId).select("*").single();
           if (error) throw error;
+          if (savedRow) poolFoods = replaceLocalFood(poolFoods, { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id });
           showTimedMessage("notice", "Futterpool-Eintrag geändert.");
         } else {
-          const { error } = await sb.from("food_pool").insert(payload);
+          const { data: savedRow, error } = await sb.from("food_pool").insert(payload).select("*").single();
           if (error) throw error;
+          if (savedRow) {
+            poolFoods = replaceLocalFood(poolFoods, { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id });
+            poolFoodsTotal = Math.max(poolFoodsTotal || 0, poolFoods.length);
+          }
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        await loadPoolFoods(false);
-        await loadFoods();
-        updateFoodFilterLabels();
-        renderFoods();
+        refreshFoodViews();
         resetFoodEditor();
+        loadPoolFoods().catch(() => null);
         return;
       }
 
@@ -2231,18 +2253,19 @@
       const payload = { ...appFoodToDb(item), user_id: currentUser.id, favorite: !!item.favorite };
 
       if (editingId && !forceNew) {
-        const { error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id);
+        const { data: savedRow, error } = await sb.from("foods").update(payload).eq("id", editingId).eq("user_id", currentUser.id).select("*").single();
         if (error) throw error;
+        if (savedRow) foods = replaceLocalFood(foods, dbFoodToApp(savedRow));
       } else {
-        const { error } = await sb.from("foods").insert(payload);
+        const { data: savedRow, error } = await sb.from("foods").insert(payload).select("*").single();
         if (error) throw error;
+        if (savedRow) foods = replaceLocalFood(foods, dbFoodToApp(savedRow));
       }
 
       showTimedMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
-      await loadFoods();
-      updateFoodFilterLabels();
-      renderFoods();
+      refreshFoodViews();
       resetFoodEditor();
+      loadFoods().catch(() => null);
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
@@ -2618,17 +2641,16 @@
       showTimedMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
+    foods = foods.filter(item => String(item.id) !== String(id));
     if (isCurrentAdmin()) {
       const { error: poolError } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("admin_food_id", id);
       if (poolError) console.warn(poolError);
+      poolFoods = poolFoods.filter(item => String(item.admin_food_id || "") !== String(id));
     }
-    await loadFoods();
-    await loadPoolFavorites();
-    await loadPoolFoods(false);
-    updateFoodFilterLabels();
-    if (editingId === id) newFood();
-    renderFoods();
+    if (editingId === id) resetFoodEditor();
+    refreshFoodViews();
     showTimedMessage("syncNotice", "Futter wurde gelöscht.");
+    Promise.all([loadFoods(), loadPoolFavorites(), loadPoolFoods()]).catch(() => null);
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -2638,13 +2660,13 @@
       showTimedMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
-    await loadFoods();
-    await loadPoolFavorites();
-    await loadPoolFoods(false);
-    if (editingId === id) newFood();
-    updateFoodFilterLabels();
-    renderFoods();
+    poolFoods = poolFoods.filter(item => String(item.id) !== String(id));
+    poolFavoriteIds.delete(String(id));
+    if (poolFoodsTotal > 0) poolFoodsTotal -= 1;
+    if (editingId === id) resetFoodEditor();
+    refreshFoodViews();
     showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
+    Promise.all([loadFoods(), loadPoolFavorites(), loadPoolFoods()]).catch(() => null);
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -3192,7 +3214,8 @@
       if (updateError) throw updateError;
 
       showMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
-      await Promise.all([loadPoolSuggestions(), loadOptions(), loadFoods(), loadPoolFoods()]);
+      removePendingSuggestionLocal(id);
+      await Promise.all([loadOptions(), loadFoods(), loadPoolFoods()]);
       await refreshPoolSuggestionCount();
     } catch (error) {
       showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
@@ -3206,7 +3229,7 @@
       return;
     }
     showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
-    await loadPoolSuggestions();
+    removePendingSuggestionLocal(id);
     await refreshPoolSuggestionCount();
   }
 
