@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version14 -->
+  <!-- Version: supabase-version15 -->
   <style>
 
     :root {
@@ -415,6 +415,9 @@
     }
     .error { background: #fbe0e0; color: var(--red); }
     .notice { background: var(--soft); color: var(--accent-dark); }
+    .notice.success, .global-notice.success { background: #e3f6ec; color: var(--green); border-color: #b7e6ce; }
+    .notice.warning, .global-notice.warning { background: #fff3c4; color: #9a6500; border-color: #ffd86b; }
+    .notice.danger, .global-notice.danger { background: #ffe3e3; color: var(--red); border-color: #ffc4c4; }
     .error.visible, .notice.visible { display: block; }
     .save-card { display: block; }
     .save-card.visible { display: block; }
@@ -1709,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v14 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v15 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1777,14 +1780,26 @@
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     }[ch]));
   }
+  function messageKind(text) {
+    const t = String(text || "").toLowerCase();
+    if (!t) return "";
+    if (t.includes("fehl") || t.includes("konnte nicht") || t.includes("fehler")) return "danger";
+    if (t.includes("bereits vorhanden") || t.includes("bitte")) return "warning";
+    if (t.includes("gespeichert") || t.includes("geändert") || t.includes("gelöscht") || t.includes("freigegeben") || t.includes("abgelehnt")) return "success";
+    return "warning";
+  }
   function showMessage(id, text) {
     const box = el(id);
     if (!box) return;
     box.textContent = text || "";
+    box.classList.remove("success", "warning", "danger");
+    const kind = messageKind(text);
+    if (kind) box.classList.add(kind);
     box.classList.toggle("visible", !!text);
     if (id === "syncNotice" && text) {
       box.style.display = "block";
-      setTimeout(() => { box.style.display = "none"; }, 2600);
+      clearTimeout(box._syncHideTimer);
+      box._syncHideTimer = setTimeout(() => { box.style.display = "none"; box.classList.remove("success", "warning", "danger"); }, 2600);
     }
   }
   function showTimedMessage(id, text, ms = 2600) {
@@ -2454,7 +2469,9 @@
 
     const visibleItems = items.slice(0, foodDisplayLimit);
     visibleItems.forEach(item => {
-      const isPool = isCurrentAdmin() || activeFoodFilter === "pool" || (!!item.poolId) || (!!item._db && item._db.admin_food_id !== undefined);
+      const itemId = String(item.id);
+      const isPool = !!item.poolId || (isCurrentAdmin() && poolFoods.some(p => String(p.id) === itemId));
+      const favoriteId = item.poolId || item.id;
       const row = document.createElement("div");
       row.className = "food-item" + (editingId === item.id ? " selected" : "");
       row.onclick = () => isPool ? selectPoolFood(item.id) : selectFood(item.id);
@@ -2483,11 +2500,12 @@
 
       const star = document.createElement("button");
       star.type = "button";
-      star.className = "fav-btn" + (item.favorite || poolFavoriteIds.has(item.id) ? " active" : "");
-      star.textContent = (item.favorite || poolFavoriteIds.has(item.id)) ? "★" : "☆";
+      const isFavActive = isPool ? poolFavoriteIds.has(favoriteId) : !!item.favorite;
+      star.className = "fav-btn" + (isFavActive ? " active" : "");
+      star.textContent = isFavActive ? "★" : "☆";
       star.onclick = (event) => {
         event.stopPropagation();
-        isPool ? togglePoolFavorite(item.id) : toggleFavorite(item.id);
+        isPool ? togglePoolFavorite(favoriteId) : toggleFavorite(item.id);
       };
       actions.appendChild(star);
 
@@ -2497,7 +2515,7 @@
       del.textContent = "×";
       del.onclick = (event) => {
         event.stopPropagation();
-        isPool && isCurrentAdmin() ? deletePoolFood(item.id) : (!isPool ? deleteFood(item.id) : null);
+        isPool && isCurrentAdmin() ? deletePoolFood(favoriteId) : (!isPool ? deleteFood(item.id) : null);
       };
       if (isPool && !isCurrentAdmin()) del.style.display = "none";
       actions.appendChild(del);
@@ -2553,7 +2571,7 @@
     if (!confirm("Futter wirklich löschen?")) return;
     const { error } = await sb.from("foods").delete().eq("id", id).eq("user_id", currentUser.id);
     if (error) {
-      showMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
+      showTimedMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
     if (isCurrentAdmin()) {
@@ -2561,23 +2579,28 @@
       if (poolError) console.warn(poolError);
     }
     await loadFoods();
+    await loadPoolFavorites();
     await loadPoolFoods(false);
     updateFoodFilterLabels();
     if (editingId === id) newFood();
     renderFoods();
+    showTimedMessage("syncNotice", "Futter wurde gelöscht.");
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
     if (!confirm("Pool-Futter wirklich löschen?")) return;
     const { error } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("id", id);
     if (error) {
-      showMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
+      showTimedMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
-    await loadPoolFoods();
+    await loadFoods();
+    await loadPoolFavorites();
+    await loadPoolFoods(false);
     if (editingId === id) newFood();
     updateFoodFilterLabels();
     renderFoods();
+    showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -3272,7 +3295,7 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v14").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v15").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
