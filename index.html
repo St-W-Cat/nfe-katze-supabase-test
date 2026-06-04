@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version24 -->
+  <!-- Version: supabase-version25 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v24 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v25 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2738,10 +2738,49 @@
       closeChooser();
     }
   }
-  function optionValueExists(optionKeyOrCategory, value) {
+  function optionValueExists(optionKeyOrCategory, value, excludeOptionId = null) {
     const clean = normalizeOptionValue(value).toLocaleLowerCase("de");
     const key = optionMap[optionKeyOrCategory] ? optionKeyOrCategory : categoryToOptionKey[optionKeyOrCategory];
-    return (suggestionOptions[key] || []).some(entry => normalizeOptionValue(entry).toLocaleLowerCase("de") === clean);
+    const category = optionMap[key]?.category || optionKeyOrCategory;
+    return optionRows.some(row => row.category === category
+      && String(row.id) !== String(excludeOptionId ?? "")
+      && normalizeOptionValue(row.value).toLocaleLowerCase("de") === clean
+      && row.active !== false);
+  }
+  async function findExistingOptionValue(category, value, excludeOptionId = null) {
+    const clean = normalizeOptionValue(value);
+    if (!clean) return null;
+    const local = optionRows.find(row => row.category === category
+      && String(row.id) !== String(excludeOptionId ?? "")
+      && normalizeOptionValue(row.value).toLocaleLowerCase("de") === clean.toLocaleLowerCase("de")
+      && row.active !== false);
+    if (local) return local;
+    const { data, error } = await sb.from("option_values").select("*").eq("category", category).eq("active", true);
+    if (error) return null;
+    return (data || []).find(row => String(row.id) !== String(excludeOptionId ?? "")
+      && normalizeOptionValue(row.value).toLocaleLowerCase("de") === clean.toLocaleLowerCase("de")) || null;
+  }
+  function poolColumnForOptionCategory(category) {
+    return { brand: "brand", sort: "sort", packaging: "packaging", weight: "weight", life_age: "life_age" }[category] || null;
+  }
+  async function updatePoolValuesForOptionChange(category, oldValue, newValue) {
+    const column = poolColumnForOptionCategory(category);
+    if (!column) return;
+    const oldClean = normalizeOptionValue(oldValue);
+    const newClean = normalizeOptionValue(newValue);
+    if (!oldClean || !newClean || oldClean === newClean) return;
+    const patch = { [column]: newClean, updated_by: currentUser?.email || "" };
+    const { error } = await sb.from("food_pool").update(patch).eq(column, oldClean).eq("active", true);
+    if (error) throw error;
+    poolFoods = poolFoods.map(item => {
+      if (column === "brand" && item.brand === oldClean) return { ...item, brand: newClean };
+      if (column === "sort" && item.sort === oldClean) return { ...item, sort: newClean };
+      if (column === "packaging" && item.packaging === oldClean) return { ...item, packaging: newClean };
+      if (column === "weight" && item.weight === oldClean) return { ...item, weight: newClean };
+      if (column === "life_age" && item.lifeAge === oldClean) return { ...item, lifeAge: newClean };
+      return item;
+    });
+    refreshFoodViews();
   }
   async function suggestChooserTextAsOption() {
     const value = normalizeOptionValue(el("chooserSearch").value);
@@ -2806,13 +2845,19 @@
   async function addOptionValue(category, value) {
     const clean = normalizeOptionValue(value);
     if (!clean) return false;
-    if (optionValueExists(category, clean)) {
-      showMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+    const existing = await findExistingOptionValue(category, clean);
+    if (existing) {
+      showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
       return false;
     }
     const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
     if (error) {
-      showMessage("optionNotice", "Eintrag konnte nicht gespeichert werden: " + error.message);
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) {
+        showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+      } else {
+        showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
+      }
       return false;
     }
     await loadOptions();
@@ -2826,7 +2871,7 @@
     const ok = await addOptionValue(category, value);
     if (ok) {
       el("optionNewValue").value = "";
-      showMessage("optionNotice", "Eintrag gespeichert.");
+      showTimedMessage("optionNotice", "Eintrag gespeichert.");
       renderOptionsAdmin();
     }
   }
@@ -2853,11 +2898,24 @@
       edit.className = "option-admin-edit";
       edit.textContent = "ändern";
       edit.onclick = async () => {
-        const next = prompt("Eintrag ändern:", row.value);
+        const next = normalizeOptionValue(prompt("Eintrag ändern:", row.value));
         if (!next) return;
-        const { error } = await sb.from("option_values").update({ value: normalizeOptionValue(next) }).eq("id", row.id);
-        if (error) showMessage("optionNotice", error.message);
-        await loadOptions();
+        const exists = await findExistingOptionValue(row.category, next, row.id);
+        if (exists) {
+          showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+          return;
+        }
+        const oldValue = row.value;
+        const { error } = await sb.from("option_values").update({ value: next }).eq("id", row.id);
+        if (error) {
+          const msg = String(error.message || "").toLowerCase();
+          showTimedMessage("optionNotice", msg.includes("duplicate") || msg.includes("option_values_unique_lower") ? "Eintrag ist bereits vorhanden." : "Eintrag konnte nicht gespeichert werden.");
+          return;
+        }
+        try { await updatePoolValuesForOptionChange(row.category, oldValue, next); }
+        catch (poolError) { showTimedMessage("optionNotice", "Eintrag geändert, Pool konnte nicht vollständig aktualisiert werden."); }
+        await Promise.all([loadOptions(), loadPoolFoods()]);
+        showTimedMessage("optionNotice", "Eintrag geändert.");
       };
       const del = document.createElement("button");
       del.className = "option-admin-delete";
@@ -2865,8 +2923,9 @@
       del.onclick = async () => {
         if (!confirm("Eintrag löschen?")) return;
         const { error } = await sb.from("option_values").update({ active: false }).eq("id", row.id);
-        if (error) showMessage("optionNotice", error.message);
+        if (error) { showTimedMessage("optionNotice", "Eintrag konnte nicht gelöscht werden."); return; }
         await loadOptions();
+        showTimedMessage("optionNotice", "Eintrag gelöscht.");
       };
       div.appendChild(text);
       div.appendChild(edit);
@@ -3176,9 +3235,12 @@
       if (kind === "option") {
         const category = item.option_category;
         const value = item.option_value;
-        if (!optionValueExists(category, value)) {
-          const { error } = await sb.from("option_values").insert({ category, value, created_by: currentUser.email });
-          if (error) throw error;
+        if (!(await findExistingOptionValue(category, value))) {
+          const { error } = await sb.from("option_values").insert({ category, value: normalizeOptionValue(value), created_by: currentUser.email });
+          if (error) {
+            const msg = String(error.message || "").toLowerCase();
+            if (!(msg.includes("duplicate") || msg.includes("option_values_unique_lower"))) throw error;
+          }
         }
       } else if (kind === "change") {
         const payload = {
@@ -3257,8 +3319,17 @@
     optionRows.forEach(row => rows.push([optionMap[categoryToOptionKey[row.category]]?.title || row.category, row.value]));
     downloadCsv("nfe-katze-listen.csv", rows);
   }
+  function csvCell(cell) {
+    const raw = String(cell ?? "");
+    const safe = raw.replace(/"/g, '""');
+    // Excel/Numbers dürfen Werte wie 7,5 oder 12.03 nicht mehr als Datum interpretieren.
+    if (/^-?\d+(?:[,.]\d+)?$/.test(raw.trim())) {
+      return '="' + safe + '"';
+    }
+    return '"' + safe + '"';
+  }
   function downloadCsv(filename, rows) {
-    const csv = rows.map(row => row.map(cell => '"' + String(cell ?? "").replace(/"/g, '""') + '"').join(";")).join("\n");
+    const csv = rows.map(row => row.map(csvCell).join(";")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
