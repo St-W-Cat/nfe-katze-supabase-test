@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version16 -->
+  <!-- Version: supabase-version18 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v16 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v18 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2213,7 +2213,13 @@
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        await reloadFoodViews({ keepLimit: true });
+        // Admin-Regel: Alle und Futterpool sind dieselbe Pool-Datenbasis.
+        // Nach Neuanlage und Änderung beide Ansichten sofort frisch aus Supabase laden.
+        await loadPoolFavorites();
+        await loadPoolFoods();
+        await loadFoods();
+        updateFoodFilterLabels();
+        renderFoods();
         resetFoodEditor();
         return;
       }
@@ -2235,7 +2241,9 @@
       }
 
       showTimedMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
-      await reloadFoodViews({ keepLimit: true });
+      await loadFoods();
+      updateFoodFilterLabels();
+      renderFoods();
       resetFoodEditor();
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
@@ -2354,17 +2362,6 @@
     const btn = el("suggestPoolChangeButton");
     if (!btn) return;
     btn.style.display = show && currentUser && !isCurrentAdmin() ? "inline-flex" : "none";
-  }
-
-  async function reloadFoodViews(options = {}) {
-    const keepLimit = options.keepLimit !== false;
-    const oldLimit = foodDisplayLimit;
-    if (currentUser) await loadFoods();
-    await loadPoolFavorites();
-    await loadPoolFoods();
-    if (keepLimit) foodDisplayLimit = oldLimit;
-    updateFoodFilterLabels();
-    renderFoods();
   }
 
   function getCurrentFoodSource() {
@@ -2580,13 +2577,27 @@
       showTimedMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
+
+    // Sofort lokal entfernen, damit Nutzer und Admin direkt eine aktualisierte Liste sehen.
+    foods = foods.filter(item => String(item.id) !== String(id));
+
     if (isCurrentAdmin()) {
       const { error: poolError } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("admin_food_id", id);
       if (poolError) console.warn(poolError);
+      poolFoods = poolFoods.filter(item => String(item.sourceFoodId) !== String(id) && String(item.id) !== String(id));
     }
-    if (editingId === id) newFood();
-    await reloadFoodViews({ keepLimit: true });
+
+    if (String(editingId) === String(id)) newFood();
+    updateFoodFilterLabels();
+    renderFoods();
     showTimedMessage("syncNotice", "Futter wurde gelöscht.");
+
+    // Danach einmal sauber aus Supabase nachladen, ohne die Favoriten-/Rendering-Logik zu verändern.
+    await loadFoods();
+    await loadPoolFavorites();
+    await loadPoolFoods();
+    updateFoodFilterLabels();
+    renderFoods();
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -2596,11 +2607,20 @@
       showTimedMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
-    // Verwaiste Pool-Favoriten entfernen, damit Favoriten- und Alle/Futterpool-Listen sofort gleich bleiben.
-    try { await sb.from("pool_favorites").delete().eq("pool_food_id", id); } catch (e) {}
+
+    // Admin: Alle und Futterpool sind beide Pool-Ansichten und müssen sofort gleich bleiben.
+    poolFoods = poolFoods.filter(item => String(item.id) !== String(id));
+    poolFavoriteIds.delete(id);
     if (String(editingId) === String(id)) newFood();
-    await reloadFoodViews({ keepLimit: true });
+    updateFoodFilterLabels();
+    renderFoods();
     showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
+
+    await loadFoods();
+    await loadPoolFavorites();
+    await loadPoolFoods();
+    updateFoodFilterLabels();
+    renderFoods();
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -3295,13 +3315,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v16").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v18").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=14").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=18").catch(() => {});
     });
   }
 
