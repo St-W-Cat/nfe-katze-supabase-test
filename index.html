@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version19 -->
+  <!-- Version: supabase-version20 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v19 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v20 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1783,7 +1783,8 @@
   function messageKind(text) {
     const t = String(text || "").toLowerCase();
     if (!t) return "";
-    if (t.includes("fehl") || t.includes("konnte nicht") || t.includes("fehler") || t.includes("gelöscht")) return "danger";
+    if (t.includes("gelöscht") || t.includes("entfernt")) return "danger";
+    if (t.includes("fehl") || t.includes("konnte nicht") || t.includes("fehler")) return "danger";
     if (t.includes("bereits vorhanden") || t.includes("bitte")) return "warning";
     if (t.includes("gespeichert") || t.includes("geändert") || t.includes("freigegeben") || t.includes("abgelehnt")) return "success";
     return "warning";
@@ -2026,8 +2027,8 @@
       console.warn(error);
       return;
     }
-    poolFavoriteIds = new Set((data || []).map(row => String(row.pool_food_id)));
-    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(String(item.id)) }));
+    poolFavoriteIds = new Set((data || []).map(row => row.pool_food_id));
+    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(item.id) }));
     updateFoodFilterLabels();
     renderFoods();
   }
@@ -2213,10 +2214,7 @@
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        // Admin-Regel: Alle und Futterpool sind dieselbe Pool-Datenbasis.
-        // Nach Neuanlage und Änderung beide Ansichten sofort frisch aus Supabase laden.
-        await loadPoolFavorites();
-        await loadPoolFoods();
+        await loadPoolFoods(false);
         await loadFoods();
         updateFoodFilterLabels();
         renderFoods();
@@ -2474,7 +2472,7 @@
     visibleItems.forEach(item => {
       const itemId = String(item.id);
       const isPool = !!item.poolId || (isCurrentAdmin() && poolFoods.some(p => String(p.id) === itemId));
-      const favoriteId = String(item.poolId || item.id);
+      const favoriteId = item.poolId || item.id;
       const row = document.createElement("div");
       row.className = "food-item" + (editingId === item.id ? " selected" : "");
       row.onclick = () => isPool ? selectPoolFood(item.id) : selectFood(item.id);
@@ -2503,7 +2501,7 @@
 
       const star = document.createElement("button");
       star.type = "button";
-      const isFavActive = isPool ? poolFavoriteIds.has(String(favoriteId)) : !!item.favorite;
+      const isFavActive = isPool ? poolFavoriteIds.has(favoriteId) : !!item.favorite;
       star.className = "fav-btn" + (isFavActive ? " active" : "");
       star.textContent = isFavActive ? "★" : "☆";
       star.onclick = (event) => {
@@ -2558,33 +2556,15 @@
   }
   async function togglePoolFavorite(id) {
     if (!currentUser) return;
-    const favId = String(id);
-    const wasFavorite = poolFavoriteIds.has(favId);
-
-    // Sofort lokal umschalten, damit der richtige Stern reagiert.
-    if (wasFavorite) poolFavoriteIds.delete(favId);
-    else poolFavoriteIds.add(favId);
-    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(String(item.id)) }));
-    updateFoodFilterLabels();
-    renderFoods();
-
-    const dbId = id;
-    const { error } = wasFavorite
-      ? await sb.from("pool_favorites").delete().eq("user_id", currentUser.id).eq("pool_food_id", dbId)
-      : await sb.from("pool_favorites").insert({ user_id: currentUser.id, pool_food_id: dbId });
-
-    if (error) {
-      // Bei Fehler zurücksetzen und Meldung zeigen.
-      if (wasFavorite) poolFavoriteIds.add(favId);
-      else poolFavoriteIds.delete(favId);
-      poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(String(item.id)) }));
-      updateFoodFilterLabels();
-      renderFoods();
-      showTimedMessage("syncNotice", wasFavorite ? "Favorit konnte nicht entfernt werden: " + error.message : "Favorit konnte nicht gespeichert werden: " + error.message);
-      return;
+    if (poolFavoriteIds.has(id)) {
+      const { error } = await sb.from("pool_favorites").delete().eq("user_id", currentUser.id).eq("pool_food_id", id);
+      if (error) showMessage("syncNotice", "Favorit konnte nicht entfernt werden: " + error.message);
+    } else {
+      const { error } = await sb.from("pool_favorites").insert({ user_id: currentUser.id, pool_food_id: id });
+      if (error) showMessage("syncNotice", "Favorit konnte nicht gespeichert werden: " + error.message);
     }
-
     await loadPoolFavorites();
+    await loadPoolFoods();
     updateFoodFilterLabels();
     renderFoods();
   }
@@ -2595,27 +2575,17 @@
       showTimedMessage("syncNotice", "Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
-
-    // Sofort lokal entfernen, damit Nutzer und Admin direkt eine aktualisierte Liste sehen.
-    foods = foods.filter(item => String(item.id) !== String(id));
-
     if (isCurrentAdmin()) {
       const { error: poolError } = await sb.from("food_pool").update({ active: false, updated_by: currentUser.email }).eq("admin_food_id", id);
       if (poolError) console.warn(poolError);
-      poolFoods = poolFoods.filter(item => String(item.sourceFoodId) !== String(id) && String(item.id) !== String(id));
     }
-
-    if (String(editingId) === String(id)) newFood();
-    updateFoodFilterLabels();
-    renderFoods();
-    showTimedMessage("syncNotice", "Futter wurde gelöscht.");
-
-    // Danach einmal sauber aus Supabase nachladen, ohne die Favoriten-/Rendering-Logik zu verändern.
     await loadFoods();
     await loadPoolFavorites();
-    await loadPoolFoods();
+    await loadPoolFoods(false);
     updateFoodFilterLabels();
+    if (editingId === id) newFood();
     renderFoods();
+    showTimedMessage("syncNotice", "Futter wurde gelöscht.");
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -2625,20 +2595,13 @@
       showTimedMessage("syncNotice", "Pool-Futter konnte nicht gelöscht werden: " + error.message);
       return;
     }
-
-    // Admin: Alle und Futterpool sind beide Pool-Ansichten und müssen sofort gleich bleiben.
-    poolFoods = poolFoods.filter(item => String(item.id) !== String(id));
-    poolFavoriteIds.delete(String(id));
-    if (String(editingId) === String(id)) newFood();
+    await loadFoods();
+    await loadPoolFavorites();
+    await loadPoolFoods(false);
+    if (editingId === id) newFood();
     updateFoodFilterLabels();
     renderFoods();
     showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
-
-    await loadFoods();
-    await loadPoolFavorites();
-    await loadPoolFoods();
-    updateFoodFilterLabels();
-    renderFoods();
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -3333,13 +3296,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v19").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v20").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=18").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=14").catch(() => {});
     });
   }
 
