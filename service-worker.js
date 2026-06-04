@@ -1,4 +1,4 @@
-const CACHE_NAME = "nfe-katze-supabase-v13";
+const CACHE_NAME = "nfe-katze-supabase-v14";
 const ASSETS = [
   "manifest.json",
   "header-logo.png",

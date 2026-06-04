@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version13 -->
+  <!-- Version: supabase-version14 -->
   <style>
 
     :root {
@@ -1709,7 +1709,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v13 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v14 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2182,7 +2182,7 @@
       if (isCurrentAdmin()) {
         const excludeId = editingId && !forceNew ? editingId : null;
         if (hasDuplicateFoodInList(poolFoods, item, excludeId)) {
-          showMessage("notice", "Dieses Futter ist bereits vorhanden.");
+          showTimedMessage("notice", "Dieses Futter ist bereits vorhanden.");
           return;
         }
 
@@ -2199,6 +2199,7 @@
         }
 
         await loadPoolFoods(false);
+        await loadFoods();
         updateFoodFilterLabels();
         renderFoods();
         resetFoodEditor();
@@ -2207,7 +2208,7 @@
 
       const excludeId = editingId && !forceNew ? editingId : null;
       if (hasDuplicateFoodInList(foods, item, excludeId)) {
-        showMessage("notice", "Dieses Futter ist bereits in deiner Liste vorhanden.");
+        showTimedMessage("notice", "Dieses Futter ist bereits in deiner Liste vorhanden.");
         return;
       }
 
@@ -2273,7 +2274,7 @@
     editingMode = "own";
     el("saveTitle").textContent = "Futter bearbeiten";
     el("saveFoodButton").textContent = "Änderung speichern";
-    el("saveAsNewButton").style.display = isCurrentAdmin() ? "none" : (currentUser ? "inline-flex" : "none");
+    el("saveAsNewButton").style.display = currentUser ? "inline-flex" : "none";
     setPoolChangeButtonVisible(false);
     setFoodSuggestButtonVisibility();
     renderFoods();
@@ -2288,7 +2289,7 @@
       editingMode = "poolAdmin";
       el("saveTitle").textContent = "Futter bearbeiten";
       el("saveFoodButton").textContent = "Änderung speichern";
-      el("saveAsNewButton").style.display = "none";
+      el("saveAsNewButton").style.display = "inline-flex";
       setPoolChangeButtonVisible(false);
     } else {
       editingId = null;
@@ -2560,8 +2561,10 @@
       if (poolError) console.warn(poolError);
     }
     await loadFoods();
-    await loadPoolFoods();
+    await loadPoolFoods(false);
+    updateFoodFilterLabels();
     if (editingId === id) newFood();
+    renderFoods();
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -3269,13 +3272,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v11").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v14").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=11").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=14").catch(() => {});
     });
   }
 
