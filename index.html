@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version21 -->
+  <!-- Version: supabase-version22 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v21 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v22 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2545,47 +2545,69 @@
     }
   }
   async function toggleFavorite(id) {
-    const item = foods.find(f => f.id === id);
+    const item = foods.find(f => String(f.id) === String(id));
     if (!item) return;
-    const newVal = !item.favorite;
-    const { error } = await sb.from("foods").update({ favorite: newVal }).eq("id", id).eq("user_id", currentUser.id);
-    if (error) {
-      showMessage("syncNotice", "Favorit konnte nicht gespeichert werden: " + error.message);
-      return;
-    }
-    await loadFoods();
+
+    const oldVal = !!item.favorite;
+    const newVal = !oldVal;
+
+    // Sofortige Anzeige ohne Seiten-Refresh.
+    item.favorite = newVal;
     updateFoodFilterLabels();
     renderFoods();
+
+    const { error } = await sb.from("foods").update({ favorite: newVal }).eq("id", id).eq("user_id", currentUser.id);
+    if (error) {
+      item.favorite = oldVal;
+      updateFoodFilterLabels();
+      renderFoods();
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", "error");
+    }
   }
+
   async function togglePoolFavorite(id) {
     if (!currentUser) return;
     const favId = String(id);
     const poolIdValue = Number.isFinite(Number(favId)) ? Number(favId) : favId;
+    const wasFavorite = poolFavoriteIds.has(favId);
 
-    if (poolFavoriteIds.has(favId)) {
-      const { error } = await sb.from("pool_favorites")
+    // Sofortige Anzeige in allen Listen: Stern, Zähler und Favoritenliste.
+    if (wasFavorite) poolFavoriteIds.delete(favId);
+    else poolFavoriteIds.add(favId);
+    poolFoods = poolFoods.map(item => String(item.id) === favId ? { ...item, favorite: !wasFavorite } : item);
+    updateFoodFilterLabels();
+    renderFoods();
+
+    let error = null;
+    if (wasFavorite) {
+      ({ error } = await sb.from("pool_favorites")
         .delete()
         .eq("user_id", currentUser.id)
-        .eq("pool_food_id", poolIdValue);
-      if (error) {
-        showTimedMessage("syncNotice", "Favorit konnte nicht entfernt werden.");
-        return;
-      }
+        .eq("pool_food_id", poolIdValue));
     } else {
-      const { error } = await sb.from("pool_favorites")
-        .insert({ user_id: currentUser.id, pool_food_id: poolIdValue });
-
-      // Wenn Supabase meldet, dass der Favorit bereits existiert, ist die lokale Anzeige nur veraltet.
-      // Dann keine technische Datenbankmeldung zeigen, sondern Favoriten neu laden.
-      if (error && !String(error.message || "").toLowerCase().includes("duplicate key")) {
-        showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.");
-        return;
+      ({ error } = await sb.from("pool_favorites")
+        .insert({ user_id: currentUser.id, pool_food_id: poolIdValue }));
+      if (error && String(error.message || "").toLowerCase().includes("duplicate key")) {
+        error = null;
       }
     }
 
-    await loadPoolFavorites();
-    updateFoodFilterLabels();
-    renderFoods();
+    if (error) {
+      // Bei Fehler UI zurücksetzen, aber keine technische Datenbankmeldung anzeigen.
+      if (wasFavorite) poolFavoriteIds.add(favId);
+      else poolFavoriteIds.delete(favId);
+      poolFoods = poolFoods.map(item => String(item.id) === favId ? { ...item, favorite: wasFavorite } : item);
+      updateFoodFilterLabels();
+      renderFoods();
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", "error");
+      return;
+    }
+
+    // Nachziehen, falls ein anderer Tab/Gerät parallel geändert hat.
+    loadPoolFavorites().then(() => {
+      updateFoodFilterLabels();
+      renderFoods();
+    }).catch(() => null);
   }
   async function deleteFood(id) {
     if (!confirm("Futter wirklich löschen?")) return;
