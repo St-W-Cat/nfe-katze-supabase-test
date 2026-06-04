@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version22 -->
+  <!-- Version: supabase-version23 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v22 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v23 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2585,8 +2585,10 @@
         .eq("user_id", currentUser.id)
         .eq("pool_food_id", poolIdValue));
     } else {
+      // Upsert statt Insert: verhindert duplicate-key-Fehler, wenn der Favorit in Supabase
+      // schon existiert, aber die lokale Anzeige noch nicht aktuell war.
       ({ error } = await sb.from("pool_favorites")
-        .insert({ user_id: currentUser.id, pool_food_id: poolIdValue }));
+        .upsert({ user_id: currentUser.id, pool_food_id: poolIdValue }));
       if (error && String(error.message || "").toLowerCase().includes("duplicate key")) {
         error = null;
       }
