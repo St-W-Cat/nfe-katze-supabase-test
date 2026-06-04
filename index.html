@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version11 -->
+  <!-- Version: supabase-version12 -->
   <style>
 
     :root {
@@ -1709,7 +1709,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v11 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v12 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -3141,21 +3141,35 @@
   async function updateCurrentUserLastLogin() {
     if (!currentUser) return;
     const now = new Date().toISOString();
-    try { localStorage.setItem("nfe_last_login_" + currentUser.email, now); } catch (e) {}
+    const email = currentUser.email || "";
+    try { localStorage.setItem("nfe_last_login_" + email, now); } catch (e) {}
+
+    // Wichtig: Der letzte Login muss bei jedem Konto gespeichert werden, nicht nur beim Admin.
+    // Erst vorhandenen Freigabe-Eintrag aktualisieren, damit der Status/Freigabe nicht verändert wird.
     try {
       let result = await sb.from("user_access")
-        .update({ last_login: now, user_id: currentUser.id })
-        .eq("email", currentUser.email)
-        .select("user_id,email,last_login");
+        .update({ last_login: now, email: email })
+        .eq("user_id", currentUser.id)
+        .select("user_id,email,last_login,status");
+
       if (result.error || !result.data || result.data.length === 0) {
         result = await sb.from("user_access")
-          .update({ last_login: now })
-          .eq("user_id", currentUser.id)
-          .select("user_id,email,last_login");
+          .update({ last_login: now, user_id: currentUser.id })
+          .eq("email", email)
+          .select("user_id,email,last_login,status");
       }
+
+      // Falls ein neuer Nutzer noch keinen Eintrag in user_access hat, wird er angelegt.
+      // Bei bestehenden Nutzern wird kein Status überschrieben.
+      if ((!result.error && (!result.data || result.data.length === 0)) || (result.error && String(result.error.message || "").toLowerCase().includes("no rows"))) {
+        result = await sb.from("user_access")
+          .insert({ user_id: currentUser.id, email: email, status: "pending", last_login: now })
+          .select("user_id,email,last_login,status");
+      }
+
       if (result.error) throw result.error;
     } catch (e) {
-      console.warn("Letzter Login konnte nicht aktualisiert werden. Bitte prüfen, ob die Spalte user_access.last_login existiert.", e);
+      console.warn("Letzter Login konnte nicht aktualisiert werden. Bitte prüfen: Spalte user_access.last_login und RLS-Policy für Nutzer-Update.", e);
     }
   }
 
