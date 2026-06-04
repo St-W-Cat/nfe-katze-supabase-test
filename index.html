@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v25 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v26 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -3041,7 +3041,25 @@
       showMessage("userAccessNotice", "Nutzer konnten nicht geladen werden: " + error.message);
       return;
     }
-    accessUsers = data || [];
+
+    // Letzter Login wird primär aus profiles gelesen, weil normale Nutzer dort ihren eigenen Wert speichern können.
+    // Falls profiles wegen RLS/Spaltennamen nicht lesbar ist, bleibt user_access/localStorage als Fallback.
+    let profileMap = new Map();
+    try {
+      const profilesResult = await sb.from("profiles").select("*");
+      if (!profilesResult.error && profilesResult.data) {
+        profilesResult.data.forEach(profile => {
+          const key = profile.user_id || profile.id || profile.email;
+          if (key) profileMap.set(String(key), profile);
+          if (profile.email) profileMap.set(String(profile.email).toLowerCase(), profile);
+        });
+      }
+    } catch (e) {}
+
+    accessUsers = (data || []).map(user => {
+      const profile = profileMap.get(String(user.user_id || "")) || profileMap.get(String(user.email || "").toLowerCase());
+      return { ...user, profile_last_login: profile?.last_login || profile?.last_sign_in_at || "" };
+    });
     if (!accessUsers.length) {
       list.innerHTML = '<div class="empty">Noch keine Nutzer.</div>';
       return;
@@ -3054,7 +3072,7 @@
         + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(statusText(user.status)) + '</span>'
         + '<div class="user-access-date">Angelegt: ' + xmlEscape(formatDateTime(user.created_at)) + '</div>'
         + '<div class="user-access-date">Freigegeben: ' + xmlEscape(formatDateTime(user.approved_at)) + '</div>'
-        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login || user.last_sign_in_at || getLocalLastLogin(user.email))) + '</div>'
+        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.profile_last_login || user.last_login || user.last_sign_in_at || getLocalLastLogin(user.email))) + '</div>'
         + '</div></div>';
 
       const actions = document.createElement("div");
@@ -3344,8 +3362,24 @@
     const email = currentUser.email || "";
     try { localStorage.setItem("nfe_last_login_" + email, now); } catch (e) {}
 
-    // Letzter Login wird für alle Konten gespeichert. Nutzer können je nach RLS oft nur ihre eigene Zeile ändern;
-    // darum erst minimal per user_id, dann per email versuchen und nur wenn nötig einen neuen Eintrag anlegen.
+    // Für normale Nutzer wird last_login in profiles gespeichert.
+    // Zusätzlich versuchen wir user_access zu aktualisieren, damit bestehende Admin-Ansichten kompatibel bleiben.
+    async function tryLastLoginUpdate(table, payload, column, value) {
+      try {
+        return await sb.from(table).update(payload).eq(column, value);
+      } catch (e) {
+        return { error: e };
+      }
+    }
+
+    await tryLastLoginUpdate("profiles", { last_login: now }, "id", currentUser.id);
+    await tryLastLoginUpdate("profiles", { last_login: now }, "user_id", currentUser.id);
+    if (email) await tryLastLoginUpdate("profiles", { last_login: now }, "email", email);
+
+    try {
+      await sb.from("profiles").upsert({ id: currentUser.id, email: email, last_login: now });
+    } catch (e) {}
+
     try {
       let result = await sb.from("user_access")
         .update({ last_login: now })
@@ -3372,10 +3406,8 @@
         currentAccess = result.data[0];
         return;
       }
-
-      if (result.error) throw result.error;
     } catch (e) {
-      console.warn("Letzter Login konnte nicht in user_access gespeichert werden. Bitte prüfen: Spalte user_access.last_login und RLS-Policy für Nutzer-Update.", e);
+      console.warn("Letzter Login konnte nur lokal/profiles gespeichert werden. Bitte RLS für user_access prüfen, falls die Adminliste leer bleibt.", e);
     }
   }
 
@@ -3433,13 +3465,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v20").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v26").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=14").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=26").catch(() => {});
     });
   }
 
