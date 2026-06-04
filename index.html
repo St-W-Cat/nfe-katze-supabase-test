@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version8 -->
+  <!-- Version: supabase-version9 -->
   <style>
 
     :root {
@@ -352,26 +352,42 @@
       stroke-width: 1.8;
     }
 
+    .calculator-card { position: relative; }
     .calculator-head {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 12px;
       margin-bottom: 14px;
+      text-align: center;
+      padding-right: 44px;
+      padding-left: 44px;
     }
-    .calculator-head .title { margin-bottom: 0; }
+    .calculator-head .title {
+      margin: 0 auto;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+    .calculator-head .title .icon { margin-left: auto; margin-right: auto; }
     .reset-calc-btn {
-      width: 38px;
-      height: 38px;
-      min-width: 38px;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
       padding: 0;
       border-radius: 999px;
-      background: #efe7ff;
-      color: var(--accent-dark);
+      background: linear-gradient(180deg, #fff8d6, #f3d66b);
+      color: #7a5500;
+      border: 1px solid rgba(122,85,0,.18);
+      box-shadow: 0 8px 18px rgba(122,85,0,.14);
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
+    .reset-calc-btn:hover { transform: translateY(-1px); filter: brightness(1.02); }
     .reset-calc-btn svg {
       width: 22px;
       height: 22px;
@@ -391,6 +407,7 @@
     }
     .error { background: #fbe0e0; color: var(--red); }
     .notice { background: var(--soft); color: var(--accent-dark); }
+    .error.visible, .notice.visible { display: block; }
     .save-card { display: block; }
     .save-card.visible { display: block; }
     .food-list-head {
@@ -1488,11 +1505,11 @@
       </div>
 
       <div class="grid">
-        <div><label for="protein">Rohprotein (%)</label><input id="protein" inputmode="decimal" autocomplete="off" placeholder="z. B. 9,5"></div>
-        <div><label for="fett">Rohfett (%)</label><input id="fett" inputmode="decimal" autocomplete="off" placeholder="z. B. 5"></div>
-        <div><label for="faser">Rohfaser (%)</label><input id="faser" inputmode="decimal" autocomplete="off" placeholder="z. B. 0,5"></div>
-        <div><label for="asche">Rohasche (%)</label><input id="asche" inputmode="decimal" autocomplete="off" placeholder="z. B. 2"></div>
-        <div><label for="feuchte">Feuchtigkeit (%)</label><input id="feuchte" inputmode="decimal" autocomplete="off" placeholder="z. B. 82"></div>
+        <div><label for="protein">Rohprotein (%)</label><input id="protein" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[,.]?[0-9]*" placeholder="z. B. 9,5"></div>
+        <div><label for="fett">Rohfett (%)</label><input id="fett" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[,.]?[0-9]*" placeholder="z. B. 5"></div>
+        <div><label for="faser">Rohfaser (%)</label><input id="faser" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[,.]?[0-9]*" placeholder="z. B. 0,5"></div>
+        <div><label for="asche">Rohasche (%)</label><input id="asche" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[,.]?[0-9]*" placeholder="z. B. 2"></div>
+        <div><label for="feuchte">Feuchtigkeit (%)</label><input id="feuchte" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9]*[,.]?[0-9]*" placeholder="z. B. 82"></div>
       </div>
 
       <div id="error" class="error"></div>
@@ -1684,7 +1701,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v8 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v9 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1765,10 +1782,20 @@
   function normalizeOptionValue(value) {
     return String(value || "").trim().replace(/\s+/g, " ");
   }
+  function sanitizeNumberInput(id) {
+    const input = el(id);
+    if (!input) return;
+    let value = String(input.value || "")
+      .replace(/[^0-9,.]/g, "")
+      .replace(/([,.].*)[,.]/g, "$1");
+    if (input.value !== value) input.value = value;
+  }
   function parseNumber(id) {
-    const value = String(el(id)?.value || "").replace(",", ".");
-    const num = Number(value);
-    return Number.isFinite(num) ? num : 0;
+    sanitizeNumberInput(id);
+    const raw = String(el(id)?.value || "").trim().replace(",", ".");
+    if (raw === "" || raw === ".") return NaN;
+    const num = Number(raw);
+    return Number.isFinite(num) ? num : NaN;
   }
   function fmt(value) {
     const num = Number(value);
@@ -1959,13 +1986,13 @@
   }
 
   function ratingPawSvg() {
-    // echte Katzenpfote: 4 Zehen + ein Ballen
+    // Katzenpfote: genau 4 Zehen + 1 Ballen, klar getrennt
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
-      + '<ellipse class="toe" cx="18" cy="22" rx="6.2" ry="8.2" transform="rotate(-18 18 22)"></ellipse>'
-      + '<ellipse class="toe" cx="29" cy="16" rx="6.5" ry="8.8" transform="rotate(-5 29 16)"></ellipse>'
-      + '<ellipse class="toe" cx="40" cy="16" rx="6.5" ry="8.8" transform="rotate(5 40 16)"></ellipse>'
-      + '<ellipse class="toe" cx="50" cy="22" rx="6.2" ry="8.2" transform="rotate(18 50 22)"></ellipse>'
-      + '<path class="pad" d="M18.8 46.2c0-9.7 7.1-17.6 15.8-17.6s15.8 7.9 15.8 17.6c0 7.1-4.9 10.2-10.8 7.1-2.9-1.6-7.1-1.6-10 0-5.9 3.1-10.8 0-10.8-7.1z"></path>'
+      + '<circle class="toe" cx="18" cy="21" r="5.6"></circle>'
+      + '<circle class="toe" cx="29" cy="15" r="5.8"></circle>'
+      + '<circle class="toe" cx="40" cy="15" r="5.8"></circle>'
+      + '<circle class="toe" cx="51" cy="21" r="5.6"></circle>'
+      + '<path class="pad" d="M20 45c0-8.8 6.4-15.8 14.5-15.8S49 36.2 49 45c0 6.2-4 9.4-9.1 7-3.3-1.6-7.5-1.6-10.8 0C24 54.4 20 51.2 20 45z"></path>'
       + '</svg>';
   }
 
@@ -2038,6 +2065,11 @@
     const faser = parseNumber("faser");
     const asche = parseNumber("asche");
     const feuchte = parseNumber("feuchte");
+
+    if ([protein, fett, faser, asche, feuchte].some(value => !Number.isFinite(value))) {
+      showCalculatorError("Bitte nur Zahlen eintragen und alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit.");
+      return false;
+    }
 
     if (feuchte >= 100) {
       showCalculatorError("Feuchtigkeit muss unter 100 % liegen.");
@@ -3093,9 +3125,14 @@
   }
 
   async function updateCurrentUserLastLogin() {
-    if (!currentUser || isCurrentAdmin()) return;
+    if (!currentUser) return;
+    const now = new Date().toISOString();
     try {
-      await sb.from("user_access").update({ last_login: new Date().toISOString() }).eq("user_id", currentUser.id);
+      let result = await sb.from("user_access").update({ last_login: now }).eq("user_id", currentUser.id);
+      if (result.error) {
+        result = await sb.from("user_access").update({ last_login: now }).eq("email", currentUser.email);
+      }
+      if (result.error) throw result.error;
     } catch (e) {
       console.warn("Letzter Login konnte nicht aktualisiert werden", e);
     }
@@ -3128,7 +3165,7 @@
       handleSession(session);
     });
 
-    fields.forEach(id => el(id).addEventListener("input", calculate));
+    fields.forEach(id => el(id).addEventListener("input", () => { sanitizeNumberInput(id); calculate(false); }));
     el("foodSearch").addEventListener("input", () => { foodDisplayLimit = 50; renderFoods(); });
     el("chooserSearch").addEventListener("input", renderChooserList);
     el("optionAdminSearch").addEventListener("input", renderOptionsAdmin);
@@ -3136,7 +3173,7 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v8").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v9").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
