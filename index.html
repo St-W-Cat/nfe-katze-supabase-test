@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version10 -->
+  <!-- Version: supabase-version11 -->
   <style>
 
     :root {
@@ -392,21 +392,25 @@
       justify-content: center;
     }
     .reset-calc-btn:hover { transform: translateY(-1px); filter: brightness(1.02); }
-    .reset-calc-btn svg {
-      width: 22px;
-      height: 22px;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+    .reset-calc-btn .reset-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 900;
+      transform: translateY(-1px);
     }
     .error, .notice {
       display: none;
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 16px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 12px;
       font-weight: 700;
+      font-size: 13px;
+      line-height: 1.3;
       text-align: center;
     }
     .error { background: #fbe0e0; color: var(--red); }
@@ -1504,7 +1508,7 @@
           <h1>NfE-Rechner für Katzen</h1>
         </div>
         <button type="button" class="reset-calc-btn" aria-label="Rechner und Futter bearbeiten leeren" title="Rechner und Futter bearbeiten leeren" onclick="resetFoodEditor()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8v5h-5"></path><path d="M18.2 13A6.8 6.8 0 1 1 16 7.9L19 11"></path></svg>
+          <span class="reset-icon" aria-hidden="true">↻</span>
         </button>
       </div>
 
@@ -1705,7 +1709,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v10 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v11 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2072,7 +2076,7 @@
     const feuchte = parseNumber("feuchte");
 
     if ([protein, fett, faser, asche, feuchte].some(value => !Number.isFinite(value))) {
-      showCalculatorError("Bitte nur Zahlen eintragen. Bitte alle Rechner-Werte ausfüllen!");
+      showCalculatorError("Bitte alle Rechner-Werte ausfüllen!");
       return false;
     }
 
@@ -2547,7 +2551,8 @@
     chooserOptionsId = optionsId;
     chooserTitleText = title;
     el("chooserTitle").textContent = title;
-    el("chooserSearch").value = "";
+    // Beim Klick auf + die bereits eingetippten Anfangsbuchstaben übernehmen.
+    el("chooserSearch").value = normalizeOptionValue(el(targetInput)?.value || "");
     el("chooserOverlay").classList.add("visible");
     renderChooserList();
 
@@ -2816,6 +2821,10 @@
     el("userAccessOverlay").classList.remove("visible");
     el("userAccessOverlay").style.display = "none";
   }
+  function getLocalLastLogin(email) {
+    try { return localStorage.getItem("nfe_last_login_" + email) || ""; } catch (e) { return ""; }
+  }
+
   function formatDateTime(value) {
     if (!value) return "–";
     try {
@@ -2858,7 +2867,7 @@
         + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(statusText(user.status)) + '</span>'
         + '<div class="user-access-date">Angelegt: ' + xmlEscape(formatDateTime(user.created_at)) + '</div>'
         + '<div class="user-access-date">Freigegeben: ' + xmlEscape(formatDateTime(user.approved_at)) + '</div>'
-        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login || user.last_sign_in_at)) + '</div>'
+        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login || user.last_sign_in_at || getLocalLastLogin(user.email))) + '</div>'
         + '</div></div>';
 
       const actions = document.createElement("div");
@@ -3132,20 +3141,21 @@
   async function updateCurrentUserLastLogin() {
     if (!currentUser) return;
     const now = new Date().toISOString();
+    try { localStorage.setItem("nfe_last_login_" + currentUser.email, now); } catch (e) {}
     try {
       let result = await sb.from("user_access")
-        .update({ last_login: now })
-        .eq("user_id", currentUser.id)
+        .update({ last_login: now, user_id: currentUser.id })
+        .eq("email", currentUser.email)
         .select("user_id,email,last_login");
       if (result.error || !result.data || result.data.length === 0) {
         result = await sb.from("user_access")
           .update({ last_login: now })
-          .eq("email", currentUser.email)
+          .eq("user_id", currentUser.id)
           .select("user_id,email,last_login");
       }
       if (result.error) throw result.error;
     } catch (e) {
-      console.warn("Letzter Login konnte nicht aktualisiert werden", e);
+      console.warn("Letzter Login konnte nicht aktualisiert werden. Bitte prüfen, ob die Spalte user_access.last_login existiert.", e);
     }
   }
 
@@ -3178,6 +3188,13 @@
 
     fields.forEach(id => {
       const input = el(id);
+      input.addEventListener("keydown", (event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        const allowedKeys = ["Backspace","Delete","Tab","Enter","Escape","ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"];
+        if (allowedKeys.includes(event.key)) return;
+        if (!/^[0-9,.]$/.test(event.key)) event.preventDefault();
+        if (/[,.]/.test(event.key) && /[,.]/.test(input.value || "")) event.preventDefault();
+      });
       input.addEventListener("beforeinput", (event) => {
         if (event.inputType && event.inputType.startsWith("delete")) return;
         if (event.data && !/^[0-9,.]$/.test(event.data)) event.preventDefault();
@@ -3196,13 +3213,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v10").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v11").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=8").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=11").catch(() => {});
     });
   }
 
