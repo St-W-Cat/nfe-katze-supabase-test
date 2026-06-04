@@ -336,8 +336,8 @@
     .rating.high { display: flex; color: var(--red); }
 
     .paw {
-      width: 28px;
-      height: 28px;
+      width: 34px;
+      height: 34px;
       display: block;
       flex: 0 0 auto;
       overflow: visible;
@@ -345,9 +345,39 @@
     .paw .toe,
     .paw .pad {
       fill: currentColor;
-      stroke: none;
+      stroke: rgba(255,255,255,.85);
+      stroke-width: 1.8;
     }
 
+    .calculator-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .calculator-head .title { margin-bottom: 0; }
+    .reset-calc-btn {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      padding: 0;
+      border-radius: 999px;
+      background: #efe7ff;
+      color: var(--accent-dark);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .reset-calc-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
     .error, .notice {
       display: none;
       margin-top: 12px;
@@ -1443,10 +1473,15 @@
     </section>
 
     <div id="appContent" class="app-content">
-    <section class="card">
-      <div class="title">
-        <div class="icon"><img src="header-logo.png" alt=""></div>
-        <h1>NfE-Rechner für Katzen</h1>
+    <section class="card calculator-card">
+      <div class="calculator-head">
+        <div class="title">
+          <div class="icon"><img src="header-logo.png" alt=""></div>
+          <h1>NfE-Rechner für Katzen</h1>
+        </div>
+        <button type="button" class="reset-calc-btn" aria-label="Rechner leeren" title="Rechner leeren" onclick="resetCalculator()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"></path><path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L20 9"></path><path d="M4 17v-5h5"></path><path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4 15"></path></svg>
+        </button>
       </div>
 
       <div class="grid">
@@ -1646,7 +1681,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v5 korrigiert · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v6.1 korrigiert · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1699,6 +1734,7 @@
   };
 
   let activeFoodFilter = "all";
+  let foodDisplayLimit = 50;
   let activePoolSuggestionFilter = "all";
   let chooserTargetInput = "";
   let chooserOptionsId = "";
@@ -1832,7 +1868,8 @@
     el("userCard").style.display = currentUser ? "" : "none";
     el("userEmail").textContent = currentUser?.email || "";
     const lastInfo = el("lastLoginInfo");
-    if (lastInfo) lastInfo.textContent = currentAccess?.last_login ? "Letzter Login: " + formatDateTime(currentAccess.last_login) : "Letzter Login: –";
+    // Letzter Login wird nur im Admin-Fenster „Nutzer“ angezeigt, nicht in der Hauptapp.
+    if (lastInfo) lastInfo.textContent = "";
     el("accessCard").style.display = currentUser && !approved ? "" : "none";
     el("appContent").classList.toggle("visible", !!currentUser && approved);
 
@@ -1853,6 +1890,7 @@
     if (lists) lists.style.display = admin ? "inline-flex" : "none";
     if (users) users.style.display = admin ? "inline-flex" : "none";
     if (suggestions) suggestions.style.display = admin ? "inline-flex" : "none";
+    if (admin) refreshPoolSuggestionCount();
   }
 
   async function loadInitialData() {
@@ -1862,6 +1900,7 @@
     await loadPoolFoods();
     updateFoodFilterLabels();
     renderFoods();
+    await refreshPoolSuggestionCount();
   }
 
   async function loadOptions() {
@@ -1890,12 +1929,16 @@
     renderFoods();
   }
   async function loadPoolFoods() {
-    const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(1000);
+    const { count, error: countError } = await sb.from("food_pool").select("id", { count: "exact", head: true }).eq("active", true);
+    if (!countError) poolFoodsTotal = count || 0;
+
+    const { data, error } = await sb.from("food_pool").select("*").eq("active", true).order("brand", { ascending: true }).limit(10000);
     if (error) {
       showMessage("syncNotice", "Futterpool konnte nicht geladen werden: " + error.message);
       return;
     }
     poolFoods = (data || []).map(row => ({ ...dbFoodToApp(row), favorite: poolFavoriteIds.has(row.id), poolId: row.id }));
+    if (!poolFoodsTotal) poolFoodsTotal = poolFoods.length;
     updateFoodFilterLabels();
     renderFoods();
   }
@@ -1914,12 +1957,12 @@
 
   function ratingPawSvg() {
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
-      + '<ellipse class="toe" cx="18" cy="22" rx="7" ry="9"></ellipse>'
-      + '<ellipse class="toe" cx="31" cy="16" rx="7" ry="9"></ellipse>'
-      + '<ellipse class="toe" cx="44" cy="22" rx="7" ry="9"></ellipse>'
-      + '<ellipse class="toe" cx="23" cy="34" rx="6" ry="8"></ellipse>'
-      + '<ellipse class="toe" cx="40" cy="34" rx="6" ry="8"></ellipse>'
-      + '<path class="pad" d="M19 49c0-10 7-17 13-17s13 7 13 17c0 6-5 9-10 6-2-1-4-2-6 0-5 3-10 0-10-6z"></path>'
+      + '<ellipse class="toe" cx="19" cy="19" rx="6.5" ry="8.5" transform="rotate(-18 19 19)"></ellipse>'
+      + '<ellipse class="toe" cx="31.5" cy="14" rx="6.8" ry="9.2"></ellipse>'
+      + '<ellipse class="toe" cx="44" cy="19" rx="6.5" ry="8.5" transform="rotate(18 44 19)"></ellipse>'
+      + '<ellipse class="toe" cx="14" cy="33" rx="5.8" ry="7.4" transform="rotate(-28 14 33)"></ellipse>'
+      + '<ellipse class="toe" cx="50" cy="33" rx="5.8" ry="7.4" transform="rotate(28 50 33)"></ellipse>'
+      + '<path class="pad" d="M20.5 48.5c0-10.2 5.4-18.2 11.5-18.2s11.5 8 11.5 18.2c0 7.2-5.1 10.3-10.3 6.5-1.1-.8-2.9-.8-4 0-5.3 3.8-8.7.7-8.7-6.5z"></path>'
       + '</svg>';
   }
 
@@ -1935,7 +1978,43 @@
     }
   }
 
-  function calculate() {
+  function hasAllCalculatorValues() {
+    return fields.every(id => String(el(id)?.value || "").trim() !== "");
+  }
+  function resetCalculator() {
+    fields.forEach(id => el(id).value = "");
+    el("nfeFresh").textContent = "–";
+    el("nfeDry").textContent = "–";
+    el("nfeDry").className = "value";
+    el("rating").innerHTML = "";
+    el("rating").className = "rating";
+    el("error").textContent = "";
+    el("error").classList.remove("visible");
+    currentResult = null;
+    clearLastValues();
+  }
+  function renderResult(result) {
+    if (!result) return;
+    currentResult = result;
+    el("nfeDry").textContent = fmt(result.nfeDry);
+    el("nfeFresh").textContent = fmt(result.nfeFresh);
+    el("rating").innerHTML = ratingPawSvg() + "<span>" + (result.ratingText || "") + "</span>";
+    applyResultStyle(result.ratingClass || "good");
+  }
+  function showCalculatorError(text) {
+    el("error").textContent = text || "";
+    el("error").classList.toggle("visible", !!text);
+  }
+  function calculate(requireAll = false) {
+    if (requireAll && !hasAllCalculatorValues()) {
+      showCalculatorError("Bitte alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit.");
+      return false;
+    }
+    if (!hasAllCalculatorValues()) {
+      showCalculatorError("");
+      return false;
+    }
+
     const protein = parseNumber("protein");
     const fett = parseNumber("fett");
     const faser = parseNumber("faser");
@@ -1943,10 +2022,10 @@
     const feuchte = parseNumber("feuchte");
 
     if (feuchte >= 100) {
-      el("error").textContent = "Feuchtigkeit muss unter 100 % liegen.";
+      showCalculatorError("Feuchtigkeit muss unter 100 % liegen.");
       return false;
     }
-    el("error").textContent = "";
+    showCalculatorError("");
 
     const nfeFresh = 100 - protein - fett - faser - asche - feuchte;
     const dryMass = 100 - feuchte;
@@ -1962,12 +2041,7 @@
       ratingClass = "mid";
     }
 
-    currentResult = { protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText, ratingClass };
-
-    el("nfeDry").textContent = fmt(nfeDry);
-    el("nfeFresh").textContent = fmt(nfeFresh);
-    el("rating").innerHTML = ratingPawSvg() + "<span>" + ratingText + "</span>";
-    applyResultStyle(ratingClass);
+    renderResult({ protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText, ratingClass });
 
     const saveCard = el("saveCard");
     if (saveCard) saveCard.classList.add("visible");
@@ -1976,26 +2050,16 @@
     return true;
   }
   function saveLastValues() {
-    try {
-      const payload = {};
-      fields.forEach(id => payload[id] = el(id).value);
-      localStorage.setItem("nfe_supabase_last_values_v5_korrigiert", JSON.stringify(payload));
-    } catch (e) {}
+    // Rechnerwerte werden bewusst nicht mehr gespeichert, damit nach Speichern/Neuladen keine alten Zahlen stehen bleiben.
   }
   function loadLastValues() {
-    try {
-      const raw = localStorage.getItem("nfe_supabase_last_values_v5_korrigiert");
-      if (!raw) return;
-      const payload = JSON.parse(raw);
-      fields.forEach(id => { if (payload[id]) el(id).value = payload[id]; });
-      calculate();
-    } catch (e) {}
+    clearLastValues();
   }
   function clearLastValues() {
     try { localStorage.removeItem("nfe_supabase_last_values_v5_korrigiert"); } catch (e) {}
   }
   function collectCurrentFood(forceNew) {
-    if (!calculate()) return null;
+    if (!calculate(true)) return null;
     const existingItem = editingId && !forceNew ? (foods.find(f => f.id === editingId) || poolFoods.find(f => f.id === editingId)) : null;
     return {
       id: forceNew ? crypto.randomUUID() : (editingId || crypto.randomUUID()),
@@ -2048,6 +2112,7 @@
         await loadPoolFoods(false);
         updateFoodFilterLabels();
         renderFoods();
+        resetCalculator();
         return;
       }
 
@@ -2065,6 +2130,7 @@
       await loadFoods();
       updateFoodFilterLabels();
       renderFoods();
+      resetCalculator();
     } catch (error) {
       showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
@@ -2102,7 +2168,6 @@
     setFoodSuggestButtonVisibility();
     setPoolChangeButtonVisible(false);
     renderFoods();
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function selectFood(id) {
     const item = foods.find(f => f.id === id);
@@ -2113,7 +2178,7 @@
     editingMode = "own";
     el("saveTitle").textContent = "Futter bearbeiten";
     el("saveFoodButton").textContent = "Änderung speichern";
-    el("saveAsNewButton").style.display = isCurrentAdmin() ? "inline-flex" : "none";
+    el("saveAsNewButton").style.display = currentUser ? "inline-flex" : "none";
     setPoolChangeButtonVisible(false);
     setFoodSuggestButtonVisibility();
     renderFoods();
@@ -2136,7 +2201,7 @@
       selectedPoolFoodIdForChange = id;
       el("saveTitle").textContent = "Futter bearbeiten";
       el("saveFoodButton").textContent = "Futter speichern";
-      el("saveAsNewButton").style.display = "none";
+      el("saveAsNewButton").style.display = "inline-flex";
       setPoolChangeButtonVisible(true);
     }
     setFoodSuggestButtonVisibility();
@@ -2154,7 +2219,21 @@
     el("packaging").value = item.packaging || "";
     el("weight").value = item.weight || "";
     el("lifeAge").value = item.lifeAge || "";
-    calculate();
+    if (item.result) {
+      renderResult({
+        protein: Number(item.values?.protein ?? 0),
+        fett: Number(item.values?.fett ?? 0),
+        faser: Number(item.values?.faser ?? 0),
+        asche: Number(item.values?.asche ?? 0),
+        feuchte: Number(item.values?.feuchte ?? 0),
+        nfeFresh: Number(item.result?.nfeFresh ?? 0),
+        nfeDry: Number(item.result?.nfeDry ?? 0),
+        ratingText: item.result?.ratingText || "",
+        ratingClass: item.result?.ratingClass || ""
+      });
+    } else {
+      calculate(false);
+    }
   }
   function clearField(id) {
     el(id).value = "";
@@ -2246,6 +2325,7 @@
   }
   function setFoodFilter(filter) {
     activeFoodFilter = filter || "all";
+    foodDisplayLimit = 50;
     document.querySelectorAll(".filter-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.filter === activeFoodFilter);
     });
@@ -2254,6 +2334,11 @@
   }
   function clearFoodSearch() {
     el("foodSearch").value = "";
+    foodDisplayLimit = 50;
+    renderFoods();
+  }
+  function loadMoreFoods() {
+    foodDisplayLimit += 50;
     renderFoods();
   }
   function renderFoods() {
@@ -2271,7 +2356,8 @@
       return;
     }
 
-    items.forEach(item => {
+    const visibleItems = items.slice(0, foodDisplayLimit);
+    visibleItems.forEach(item => {
       const isPool = isCurrentAdmin() || activeFoodFilter === "pool" || (!!item.poolId) || (!!item._db && item._db.admin_food_id !== undefined);
       const row = document.createElement("div");
       row.className = "food-item" + (editingId === item.id ? " selected" : "");
@@ -2325,16 +2411,16 @@
       list.appendChild(row);
     });
 
-    if (poolFoods.length < poolFoodsTotal && (activeFoodFilter === "pool" || isCurrentAdmin())) {
+    if (visibleItems.length < items.length) {
       const moreRow = document.createElement("div");
       moreRow.className = "load-more-row";
       const moreBtn = document.createElement("button");
       moreBtn.type = "button";
       moreBtn.className = "load-more-btn";
-      moreBtn.textContent = "Weitere laden (" + poolFoods.length + " von " + poolFoodsTotal + ")";
+      moreBtn.textContent = "Weitere laden (" + visibleItems.length + " von " + items.length + ")";
       moreBtn.onclick = (event) => {
         event.stopPropagation();
-        loadMorePoolFoods();
+        loadMoreFoods();
       };
       moreRow.appendChild(moreBtn);
       list.appendChild(moreRow);
@@ -2784,6 +2870,14 @@
       btn.textContent = labels[filter] + " (" + (counts[filter] || 0) + ")";
     });
   }
+
+  async function refreshPoolSuggestionCount() {
+    if (!isCurrentAdmin()) return;
+    const btn = el("openPoolSuggestionsButton");
+    if (!btn) return;
+    const { count, error } = await sb.from("pool_suggestions").select("id", { count: "exact", head: true }).eq("status", "pending");
+    btn.textContent = "Pool Vorschläge (" + (error ? 0 : (count || 0)) + ")";
+  }
   async function openPoolSuggestionsAdmin() {
     if (!isCurrentAdmin()) return;
     el("poolSuggestionsOverlay").classList.add("visible");
@@ -2802,6 +2896,8 @@
       return;
     }
     poolSuggestions = data || [];
+    const btn = el("openPoolSuggestionsButton");
+    if (btn) btn.textContent = "Pool Vorschläge (" + poolSuggestions.length + ")";
     updatePoolSuggestionTabs();
     renderPoolSuggestionsAdmin();
   }
@@ -2927,6 +3023,7 @@
 
       showMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
       await Promise.all([loadPoolSuggestions(), loadOptions(), loadFoods(), loadPoolFoods()]);
+      await refreshPoolSuggestionCount();
     } catch (error) {
       showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
     }
@@ -2940,6 +3037,7 @@
     }
     showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
     await loadPoolSuggestions();
+    await refreshPoolSuggestionCount();
   }
 
   async function downloadFoodList() {
@@ -3003,7 +3101,7 @@
     });
 
     fields.forEach(id => el(id).addEventListener("input", calculate));
-    el("foodSearch").addEventListener("input", renderFoods);
+    el("foodSearch").addEventListener("input", () => { foodDisplayLimit = 50; renderFoods(); });
     el("chooserSearch").addEventListener("input", renderChooserList);
     el("optionAdminSearch").addEventListener("input", renderOptionsAdmin);
 
