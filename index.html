@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version9 -->
+  <!-- Version: supabase-version10 -->
   <style>
 
     :root {
@@ -348,8 +348,12 @@
     .paw .toe,
     .paw .pad {
       fill: currentColor;
-      stroke: rgba(255,255,255,.85);
-      stroke-width: 1.8;
+      stroke: rgba(0,0,0,.12);
+      stroke-width: 1;
+    }
+    .paw .shine {
+      fill: rgba(255,255,255,.22);
+      stroke: none;
     }
 
     .calculator-card { position: relative; }
@@ -379,10 +383,10 @@
       min-width: 42px;
       padding: 0;
       border-radius: 999px;
-      background: linear-gradient(180deg, #fff8d6, #f3d66b);
-      color: #7a5500;
-      border: 1px solid rgba(122,85,0,.18);
-      box-shadow: 0 8px 18px rgba(122,85,0,.14);
+      background: linear-gradient(180deg, #eef6ff, #cfe3ff);
+      color: #2456a6;
+      border: 1px solid rgba(36,86,166,.22);
+      box-shadow: 0 8px 18px rgba(36,86,166,.14);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1500,7 +1504,7 @@
           <h1>NfE-Rechner für Katzen</h1>
         </div>
         <button type="button" class="reset-calc-btn" aria-label="Rechner und Futter bearbeiten leeren" title="Rechner und Futter bearbeiten leeren" onclick="resetFoodEditor()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"></path><path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L20 9"></path><path d="M4 17v-5h5"></path><path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4 15"></path></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8v5h-5"></path><path d="M18.2 13A6.8 6.8 0 1 1 16 7.9L19 11"></path></svg>
         </button>
       </div>
 
@@ -1701,7 +1705,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v9 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v10 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1986,13 +1990,14 @@
   }
 
   function ratingPawSvg() {
-    // Katzenpfote: genau 4 Zehen + 1 Ballen, klar getrennt
+    // Katzenpfote: 4 Zehen + 1 weicher Ballen, wie in der freigegebenen Vorschau.
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
-      + '<circle class="toe" cx="18" cy="21" r="5.6"></circle>'
-      + '<circle class="toe" cx="29" cy="15" r="5.8"></circle>'
-      + '<circle class="toe" cx="40" cy="15" r="5.8"></circle>'
-      + '<circle class="toe" cx="51" cy="21" r="5.6"></circle>'
-      + '<path class="pad" d="M20 45c0-8.8 6.4-15.8 14.5-15.8S49 36.2 49 45c0 6.2-4 9.4-9.1 7-3.3-1.6-7.5-1.6-10.8 0C24 54.4 20 51.2 20 45z"></path>'
+      + '<ellipse class="toe" cx="16" cy="25" rx="7" ry="9" transform="rotate(-22 16 25)"></ellipse>'
+      + '<ellipse class="toe" cx="28" cy="17" rx="7" ry="10" transform="rotate(-8 28 17)"></ellipse>'
+      + '<ellipse class="toe" cx="40" cy="17" rx="7" ry="10" transform="rotate(8 40 17)"></ellipse>'
+      + '<ellipse class="toe" cx="52" cy="25" rx="7" ry="9" transform="rotate(22 52 25)"></ellipse>'
+      + '<path class="pad" d="M18 46c0-9.6 7.3-17.4 16-17.4S50 36.4 50 46c0 6.9-4.8 10.9-10.4 8.1-3.5-1.8-7.7-1.8-11.2 0C22.8 56.9 18 52.9 18 46z"></path>'
+      + '<path class="shine" d="M25 41c1.7-4.2 5.2-6.9 9-6.9 1.1 0 2.1.2 3.1.6-5.3.5-9.1 3.3-11.2 7.8-.4.8-1.3-.6-.9-1.5z"></path>'
       + '</svg>';
   }
 
@@ -2051,12 +2056,12 @@
   }
   function calculate(requireAll = false) {
     if (requireAll && !hasAllCalculatorValues()) {
-      showCalculatorError("Bitte alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit.");
+      showCalculatorError("Bitte alle Rechner-Werte ausfüllen!");
       return false;
     }
     if (!hasAllCalculatorValues()) {
       const hasAnyValue = fields.some(id => String(el(id)?.value || "").trim() !== "");
-      showCalculatorError(hasAnyValue ? "Bitte alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit." : "");
+      showCalculatorError(hasAnyValue ? "Bitte alle Rechner-Werte ausfüllen!" : "");
       return false;
     }
 
@@ -2067,7 +2072,7 @@
     const feuchte = parseNumber("feuchte");
 
     if ([protein, fett, faser, asche, feuchte].some(value => !Number.isFinite(value))) {
-      showCalculatorError("Bitte nur Zahlen eintragen und alle Rechner-Werte ausfüllen: Protein, Fett, Faser, Asche und Feuchtigkeit.");
+      showCalculatorError("Bitte nur Zahlen eintragen. Bitte alle Rechner-Werte ausfüllen!");
       return false;
     }
 
@@ -2853,7 +2858,7 @@
         + '<div class="user-access-meta"><span class="status-pill status-' + xmlEscape(user.status) + '">' + xmlEscape(statusText(user.status)) + '</span>'
         + '<div class="user-access-date">Angelegt: ' + xmlEscape(formatDateTime(user.created_at)) + '</div>'
         + '<div class="user-access-date">Freigegeben: ' + xmlEscape(formatDateTime(user.approved_at)) + '</div>'
-        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login)) + '</div>'
+        + '<div class="user-access-date">Letzter Login: ' + xmlEscape(formatDateTime(user.last_login || user.last_sign_in_at)) + '</div>'
         + '</div></div>';
 
       const actions = document.createElement("div");
@@ -3128,9 +3133,15 @@
     if (!currentUser) return;
     const now = new Date().toISOString();
     try {
-      let result = await sb.from("user_access").update({ last_login: now }).eq("user_id", currentUser.id);
-      if (result.error) {
-        result = await sb.from("user_access").update({ last_login: now }).eq("email", currentUser.email);
+      let result = await sb.from("user_access")
+        .update({ last_login: now })
+        .eq("user_id", currentUser.id)
+        .select("user_id,email,last_login");
+      if (result.error || !result.data || result.data.length === 0) {
+        result = await sb.from("user_access")
+          .update({ last_login: now })
+          .eq("email", currentUser.email)
+          .select("user_id,email,last_login");
       }
       if (result.error) throw result.error;
     } catch (e) {
@@ -3165,7 +3176,19 @@
       handleSession(session);
     });
 
-    fields.forEach(id => el(id).addEventListener("input", () => { sanitizeNumberInput(id); calculate(false); }));
+    fields.forEach(id => {
+      const input = el(id);
+      input.addEventListener("beforeinput", (event) => {
+        if (event.inputType && event.inputType.startsWith("delete")) return;
+        if (event.data && !/^[0-9,.]$/.test(event.data)) event.preventDefault();
+        if (event.data && /[,.]/.test(event.data) && /[,.]/.test(input.value || "")) event.preventDefault();
+      });
+      input.addEventListener("paste", (event) => {
+        const text = (event.clipboardData || window.clipboardData)?.getData("text") || "";
+        if (!/^[0-9,.]*$/.test(text) || ((input.value || "").match(/[,.]/) && /[,.]/.test(text))) event.preventDefault();
+      });
+      input.addEventListener("input", () => { sanitizeNumberInput(id); calculate(false); });
+    });
     el("foodSearch").addEventListener("input", () => { foodDisplayLimit = 50; renderFoods(); });
     el("chooserSearch").addEventListener("input", renderChooserList);
     el("optionAdminSearch").addEventListener("input", renderOptionsAdmin);
@@ -3173,7 +3196,7 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v9").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v10").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
