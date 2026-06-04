@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version20 -->
+  <!-- Version: supabase-version21 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v20 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v21 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2015,7 +2015,7 @@
       showMessage("syncNotice", "Futterpool konnte nicht geladen werden: " + error.message);
       return;
     }
-    poolFoods = (data || []).map(row => ({ ...dbFoodToApp(row), favorite: poolFavoriteIds.has(row.id), poolId: row.id }));
+    poolFoods = (data || []).map(row => ({ ...dbFoodToApp(row), favorite: poolFavoriteIds.has(String(row.id)), poolId: row.id }));
     if (!poolFoodsTotal) poolFoodsTotal = poolFoods.length;
     updateFoodFilterLabels();
     renderFoods();
@@ -2027,8 +2027,8 @@
       console.warn(error);
       return;
     }
-    poolFavoriteIds = new Set((data || []).map(row => row.pool_food_id));
-    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(item.id) }));
+    poolFavoriteIds = new Set((data || []).map(row => String(row.pool_food_id)));
+    poolFoods = poolFoods.map(item => ({ ...item, favorite: poolFavoriteIds.has(String(item.id)) }));
     updateFoodFilterLabels();
     renderFoods();
   }
@@ -2366,7 +2366,7 @@
     return activeFoodFilter === "pool" ? poolFoods : foods;
   }
   function getPoolFavoriteFoods() {
-    return poolFoods.filter(item => poolFavoriteIds.has(item.id));
+    return poolFoods.filter(item => poolFavoriteIds.has(String(item.id)));
   }
 
   function getOwnFavoriteFoods() {
@@ -2405,11 +2405,13 @@
 
   function updateFoodFilterLabels() {
     const counts = getFoodFilterCounts();
+    if (isCurrentAdmin() && activeFoodFilter === "all") activeFoodFilter = "pool";
     document.querySelectorAll(".filter-btn").forEach(btn => {
       const filter = btn.dataset.filter;
       const label = btn.dataset.label || filter;
       btn.textContent = label + " (" + (counts[filter] ?? 0) + ")";
-      btn.style.display = "inline-flex";
+      btn.style.display = (isCurrentAdmin() && filter === "all") ? "none" : "inline-flex";
+      btn.classList.toggle("active", btn.dataset.filter === activeFoodFilter);
     });
   }
 
@@ -2437,6 +2439,7 @@
   }
   function setFoodFilter(filter) {
     activeFoodFilter = filter || "all";
+    if (isCurrentAdmin() && activeFoodFilter === "all") activeFoodFilter = "pool";
     foodDisplayLimit = 50;
     document.querySelectorAll(".filter-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.filter === activeFoodFilter);
@@ -2472,7 +2475,7 @@
     visibleItems.forEach(item => {
       const itemId = String(item.id);
       const isPool = !!item.poolId || (isCurrentAdmin() && poolFoods.some(p => String(p.id) === itemId));
-      const favoriteId = item.poolId || item.id;
+      const favoriteId = String(item.poolId || item.id);
       const row = document.createElement("div");
       row.className = "food-item" + (editingId === item.id ? " selected" : "");
       row.onclick = () => isPool ? selectPoolFood(item.id) : selectFood(item.id);
@@ -2501,7 +2504,7 @@
 
       const star = document.createElement("button");
       star.type = "button";
-      const isFavActive = isPool ? poolFavoriteIds.has(favoriteId) : !!item.favorite;
+      const isFavActive = isPool ? poolFavoriteIds.has(String(favoriteId)) : !!item.favorite;
       star.className = "fav-btn" + (isFavActive ? " active" : "");
       star.textContent = isFavActive ? "★" : "☆";
       star.onclick = (event) => {
@@ -2556,15 +2559,31 @@
   }
   async function togglePoolFavorite(id) {
     if (!currentUser) return;
-    if (poolFavoriteIds.has(id)) {
-      const { error } = await sb.from("pool_favorites").delete().eq("user_id", currentUser.id).eq("pool_food_id", id);
-      if (error) showMessage("syncNotice", "Favorit konnte nicht entfernt werden: " + error.message);
+    const favId = String(id);
+    const poolIdValue = Number.isFinite(Number(favId)) ? Number(favId) : favId;
+
+    if (poolFavoriteIds.has(favId)) {
+      const { error } = await sb.from("pool_favorites")
+        .delete()
+        .eq("user_id", currentUser.id)
+        .eq("pool_food_id", poolIdValue);
+      if (error) {
+        showTimedMessage("syncNotice", "Favorit konnte nicht entfernt werden.");
+        return;
+      }
     } else {
-      const { error } = await sb.from("pool_favorites").insert({ user_id: currentUser.id, pool_food_id: id });
-      if (error) showMessage("syncNotice", "Favorit konnte nicht gespeichert werden: " + error.message);
+      const { error } = await sb.from("pool_favorites")
+        .insert({ user_id: currentUser.id, pool_food_id: poolIdValue });
+
+      // Wenn Supabase meldet, dass der Favorit bereits existiert, ist die lokale Anzeige nur veraltet.
+      // Dann keine technische Datenbankmeldung zeigen, sondern Favoriten neu laden.
+      if (error && !String(error.message || "").toLowerCase().includes("duplicate key")) {
+        showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.");
+        return;
+      }
     }
+
     await loadPoolFavorites();
-    await loadPoolFoods();
     updateFoodFilterLabels();
     renderFoods();
   }
