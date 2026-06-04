@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version12 -->
+  <!-- Version: supabase-version13 -->
   <style>
 
     :root {
@@ -1709,7 +1709,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v12 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v13 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1787,6 +1787,15 @@
       setTimeout(() => { box.style.display = "none"; }, 2600);
     }
   }
+  function showTimedMessage(id, text, ms = 2600) {
+    showMessage(id, text);
+    if (!text) return;
+    const box = el(id);
+    if (box) {
+      clearTimeout(box._hideTimer);
+      box._hideTimer = setTimeout(() => showMessage(id, ""), ms);
+    }
+  }
   function normalizeOptionValue(value) {
     return String(value || "").trim().replace(/\s+/g, " ");
   }
@@ -1856,6 +1865,21 @@
   }
   function foodLabel(item) {
     return [item?.brand || "Unbenanntes Futter", item?.sort].filter(Boolean).join(" – ");
+  }
+  function normalizeFoodKey(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+  function sameFoodIdentity(a, b) {
+    return normalizeFoodKey(a?.brand) === normalizeFoodKey(b?.brand)
+      && normalizeFoodKey(a?.sort) === normalizeFoodKey(b?.sort)
+      && normalizeFoodKey(a?.brand) !== "";
+  }
+  function hasDuplicateFoodInList(list, item, excludeId) {
+    return (list || []).some(existing => {
+      if (!sameFoodIdentity(existing, item)) return false;
+      if (excludeId && String(existing.id) === String(excludeId)) return false;
+      return true;
+    });
   }
 
   async function loginAccount() {
@@ -2040,7 +2064,7 @@
     editingMode = isCurrentAdmin() ? "poolAdmin" : "own";
     selectedPoolFoodIdForChange = null;
     el("saveTitle").textContent = "Futter bearbeiten";
-    el("saveFoodButton").textContent = isCurrentAdmin() ? "Im Futterpool speichern" : "Futter speichern";
+    el("saveFoodButton").textContent = "Futter speichern";
     el("saveAsNewButton").style.display = "none";
     setPoolChangeButtonVisible(false);
     setFoodSuggestButtonVisibility();
@@ -2156,22 +2180,34 @@
 
     try {
       if (isCurrentAdmin()) {
+        const excludeId = editingId && !forceNew ? editingId : null;
+        if (hasDuplicateFoodInList(poolFoods, item, excludeId)) {
+          showMessage("notice", "Dieses Futter ist bereits vorhanden.");
+          return;
+        }
+
         const payload = { ...appFoodToDb(item), updated_by: currentUser.email, active: true };
 
         if (editingId && !forceNew) {
           const { error } = await sb.from("food_pool").update(payload).eq("id", editingId);
           if (error) throw error;
-          showMessage("notice", "Futterpool-Eintrag geändert.");
+          showTimedMessage("notice", "Futterpool-Eintrag geändert.");
         } else {
           const { error } = await sb.from("food_pool").insert(payload);
           if (error) throw error;
-          showMessage("notice", "Futterpool-Eintrag gespeichert.");
+          showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
         await loadPoolFoods(false);
         updateFoodFilterLabels();
         renderFoods();
         resetFoodEditor();
+        return;
+      }
+
+      const excludeId = editingId && !forceNew ? editingId : null;
+      if (hasDuplicateFoodInList(foods, item, excludeId)) {
+        showMessage("notice", "Dieses Futter ist bereits in deiner Liste vorhanden.");
         return;
       }
 
@@ -2185,7 +2221,7 @@
         if (error) throw error;
       }
 
-      showMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
+      showTimedMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
       await loadFoods();
       updateFoodFilterLabels();
       renderFoods();
@@ -2222,7 +2258,7 @@
     currentResult = null;
     clearLastValues();
     el("saveTitle").textContent = "Futter bearbeiten";
-    el("saveFoodButton").textContent = isCurrentAdmin() ? "Im Futterpool speichern" : "Futter speichern";
+    el("saveFoodButton").textContent = "Futter speichern";
     el("saveAsNewButton").style.display = "none";
     setFoodSuggestButtonVisibility();
     setPoolChangeButtonVisible(false);
@@ -2237,7 +2273,7 @@
     editingMode = "own";
     el("saveTitle").textContent = "Futter bearbeiten";
     el("saveFoodButton").textContent = "Änderung speichern";
-    el("saveAsNewButton").style.display = currentUser ? "inline-flex" : "none";
+    el("saveAsNewButton").style.display = isCurrentAdmin() ? "none" : (currentUser ? "inline-flex" : "none");
     setPoolChangeButtonVisible(false);
     setFoodSuggestButtonVisibility();
     renderFoods();
@@ -2252,7 +2288,7 @@
       editingMode = "poolAdmin";
       el("saveTitle").textContent = "Futter bearbeiten";
       el("saveFoodButton").textContent = "Änderung speichern";
-      el("saveAsNewButton").style.display = "inline-flex";
+      el("saveAsNewButton").style.display = "none";
       setPoolChangeButtonVisible(false);
     } else {
       editingId = null;
@@ -3144,11 +3180,11 @@
     const email = currentUser.email || "";
     try { localStorage.setItem("nfe_last_login_" + email, now); } catch (e) {}
 
-    // Wichtig: Der letzte Login muss bei jedem Konto gespeichert werden, nicht nur beim Admin.
-    // Erst vorhandenen Freigabe-Eintrag aktualisieren, damit der Status/Freigabe nicht verändert wird.
+    // Letzter Login wird für alle Konten gespeichert. Nutzer können je nach RLS oft nur ihre eigene Zeile ändern;
+    // darum erst minimal per user_id, dann per email versuchen und nur wenn nötig einen neuen Eintrag anlegen.
     try {
       let result = await sb.from("user_access")
-        .update({ last_login: now, email: email })
+        .update({ last_login: now })
         .eq("user_id", currentUser.id)
         .select("user_id,email,last_login,status");
 
@@ -3159,17 +3195,23 @@
           .select("user_id,email,last_login,status");
       }
 
-      // Falls ein neuer Nutzer noch keinen Eintrag in user_access hat, wird er angelegt.
-      // Bei bestehenden Nutzern wird kein Status überschrieben.
-      if ((!result.error && (!result.data || result.data.length === 0)) || (result.error && String(result.error.message || "").toLowerCase().includes("no rows"))) {
-        result = await sb.from("user_access")
-          .insert({ user_id: currentUser.id, email: email, status: "pending", last_login: now })
-          .select("user_id,email,last_login,status");
+      if (!result.error && result.data && result.data.length > 0) {
+        currentAccess = result.data[0];
+        return;
+      }
+
+      result = await sb.from("user_access")
+        .insert({ user_id: currentUser.id, email: email, status: "pending", last_login: now })
+        .select("user_id,email,last_login,status");
+
+      if (!result.error && result.data && result.data.length > 0) {
+        currentAccess = result.data[0];
+        return;
       }
 
       if (result.error) throw result.error;
     } catch (e) {
-      console.warn("Letzter Login konnte nicht aktualisiert werden. Bitte prüfen: Spalte user_access.last_login und RLS-Policy für Nutzer-Update.", e);
+      console.warn("Letzter Login konnte nicht in user_access gespeichert werden. Bitte prüfen: Spalte user_access.last_login und RLS-Policy für Nutzer-Update.", e);
     }
   }
 
