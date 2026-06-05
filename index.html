@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v26 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v27 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1835,6 +1835,41 @@
     if (!Number.isFinite(num)) return "–";
     return num.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+
+  function ratingFromDryNfe(nfeDry) {
+    const dry = Number(nfeDry);
+    if (!Number.isFinite(dry)) return { ratingText: "", ratingClass: "" };
+    // Bewertungsregel: Nur NfE Trockenmasse zählt. NfE normal ist nur Richtwert.
+    if (dry < 5) return { ratingText: "super", ratingClass: "good" };
+    if (dry < 10) return { ratingText: "geeignet", ratingClass: "mid" };
+    return { ratingText: "vermeiden", ratingClass: "high" };
+  }
+
+  function calculateFoodResultFromValues(values) {
+    const protein = Number(values?.protein ?? values?.rohprotein ?? 0);
+    const fett = Number(values?.fett ?? values?.fat ?? 0);
+    const faser = Number(values?.faser ?? values?.fiber ?? 0);
+    const asche = Number(values?.asche ?? values?.ash ?? 0);
+    const feuchte = Number(values?.feuchte ?? values?.moisture ?? 0);
+    const nfeFresh = 100 - protein - fett - faser - asche - feuchte;
+    const dryMass = 100 - feuchte;
+    const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
+    const rating = ratingFromDryNfe(nfeDry);
+    return { nfeFresh, nfeDry, ratingText: rating.ratingText, ratingClass: rating.ratingClass };
+  }
+
+  async function reloadAllVisibleData() {
+    // Zentrale Aktualisierung nach Speichern/Ändern/Löschen/Vorschlägen.
+    // Dadurch ändern sich nicht nur die Zahlen, sondern auch die sichtbaren Listen.
+    await loadOptions();
+    await loadPoolFavorites();
+    await loadFoods();
+    await loadPoolFoods();
+    updateFoodFilterLabels();
+    renderFoods();
+    await refreshPoolSuggestionCount();
+  }
+
   function dbFoodToApp(row) {
     return {
       id: row.id,
@@ -1851,12 +1886,13 @@
         asche: row.ash ?? 0,
         feuchte: row.moisture ?? 0
       },
-      result: {
-        nfeFresh: row.nfe_fresh ?? 0,
-        nfeDry: row.nfe_dry ?? 0,
-        ratingText: row.rating_text || "",
-        ratingClass: row.rating_class || ""
-      },
+      result: calculateFoodResultFromValues({
+        protein: row.protein ?? 0,
+        fett: row.fat ?? 0,
+        faser: row.fiber ?? 0,
+        asche: row.ash ?? 0,
+        feuchte: row.moisture ?? 0
+      }),
       sourceFoodId: row.admin_food_id || row.id,
       _db: row
     };
@@ -2149,17 +2185,9 @@
     const dryMass = 100 - feuchte;
     const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
 
-    let ratingText = "super";
-    let ratingClass = "good";
-    if (nfeDry > 25) {
-      ratingText = "vermeiden";
-      ratingClass = "high";
-    } else if (nfeDry > 15) {
-      ratingText = "geeignet";
-      ratingClass = "mid";
-    }
+    const rating = ratingFromDryNfe(nfeDry);
 
-    renderResult({ protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText, ratingClass });
+    renderResult({ protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText: rating.ratingText, ratingClass: rating.ratingClass });
 
     const saveCard = el("saveCard");
     if (saveCard) saveCard.classList.add("visible");
@@ -2238,9 +2266,8 @@
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        refreshFoodViews();
+        await reloadAllVisibleData();
         resetFoodEditor();
-        loadPoolFoods().catch(() => null);
         return;
       }
 
@@ -2263,11 +2290,10 @@
       }
 
       showTimedMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
-      refreshFoodViews();
+      await reloadAllVisibleData();
       resetFoodEditor();
-      loadFoods().catch(() => null);
     } catch (error) {
-      showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
+      showTimedMessage("notice", "Speichern fehlgeschlagen: " + error.message, 4200);
     }
   }
 
@@ -2354,21 +2380,21 @@
     el("packaging").value = item.packaging || "";
     el("weight").value = item.weight || "";
     el("lifeAge").value = item.lifeAge || "";
-    if (item.result) {
-      renderResult({
-        protein: Number(item.values?.protein ?? 0),
-        fett: Number(item.values?.fett ?? 0),
-        faser: Number(item.values?.faser ?? 0),
-        asche: Number(item.values?.asche ?? 0),
-        feuchte: Number(item.values?.feuchte ?? 0),
-        nfeFresh: Number(item.result?.nfeFresh ?? 0),
-        nfeDry: Number(item.result?.nfeDry ?? 0),
-        ratingText: item.result?.ratingText || "",
-        ratingClass: item.result?.ratingClass || ""
-      });
-    } else {
-      calculate(false);
-    }
+    const recalculated = calculateFoodResultFromValues({
+      protein: item.values?.protein ?? 0,
+      fett: item.values?.fett ?? 0,
+      faser: item.values?.faser ?? 0,
+      asche: item.values?.asche ?? 0,
+      feuchte: item.values?.feuchte ?? 0
+    });
+    renderResult({
+      protein: Number(item.values?.protein ?? 0),
+      fett: Number(item.values?.fett ?? 0),
+      faser: Number(item.values?.faser ?? 0),
+      asche: Number(item.values?.asche ?? 0),
+      feuchte: Number(item.values?.feuchte ?? 0),
+      ...recalculated
+    });
   }
   function clearField(id) {
     el(id).value = "";
@@ -2648,9 +2674,8 @@
       poolFoods = poolFoods.filter(item => String(item.admin_food_id || "") !== String(id));
     }
     if (editingId === id) resetFoodEditor();
-    refreshFoodViews();
+    await reloadAllVisibleData();
     showTimedMessage("syncNotice", "Futter wurde gelöscht.");
-    Promise.all([loadFoods(), loadPoolFavorites(), loadPoolFoods()]).catch(() => null);
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -2664,9 +2689,8 @@
     poolFavoriteIds.delete(String(id));
     if (poolFoodsTotal > 0) poolFoodsTotal -= 1;
     if (editingId === id) resetFoodEditor();
-    refreshFoodViews();
+    await reloadAllVisibleData();
     showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
-    Promise.all([loadFoods(), loadPoolFavorites(), loadPoolFoods()]).catch(() => null);
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -2914,7 +2938,8 @@
         }
         try { await updatePoolValuesForOptionChange(row.category, oldValue, next); }
         catch (poolError) { showTimedMessage("optionNotice", "Eintrag geändert, Pool konnte nicht vollständig aktualisiert werden."); }
-        await Promise.all([loadOptions(), loadPoolFoods()]);
+        await reloadAllVisibleData();
+        renderOptionsAdmin();
         showTimedMessage("optionNotice", "Eintrag geändert.");
       };
       const del = document.createElement("button");
@@ -3282,10 +3307,7 @@
         if (error) throw error;
       } else {
         const food = dbFoodToApp(item);
-        const foodPayload = { ...appFoodToDb(food), user_id: currentUser.id, favorite: false };
-        const { data: saved, error: foodError } = await sb.from("foods").insert(foodPayload).select("id").single();
-        if (foodError) throw foodError;
-        const poolPayload = { ...appFoodToDb(food), admin_food_id: saved.id, active: true, updated_by: currentUser.email };
+        const poolPayload = { ...appFoodToDb(food), active: true, updated_by: currentUser.email };
         const { error: poolError } = await sb.from("food_pool").insert(poolPayload);
         if (poolError) throw poolError;
       }
@@ -3293,24 +3315,25 @@
       const { error: updateError } = await sb.from("pool_suggestions").update({ status: "approved", reviewed_at: now, reviewed_by: currentUser.email }).eq("id", id);
       if (updateError) throw updateError;
 
-      showMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
+      showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
       removePendingSuggestionLocal(id);
-      await Promise.all([loadOptions(), loadFoods(), loadPoolFoods()]);
-      await refreshPoolSuggestionCount();
+      await reloadAllVisibleData();
+      await loadPoolSuggestions();
     } catch (error) {
-      showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
+      showTimedMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message, 4200);
     }
   }
   async function rejectPoolSuggestion(id) {
     if (!confirm("Vorschlag ablehnen und automatisch löschen?")) return;
     const { error } = await sb.from("pool_suggestions").delete().eq("id", id);
     if (error) {
-      showMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message);
+      showTimedMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message, 4200);
       return;
     }
-    showMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
+    showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
     removePendingSuggestionLocal(id);
     await refreshPoolSuggestionCount();
+    await loadPoolSuggestions();
   }
 
   async function downloadFoodList() {
@@ -3465,13 +3488,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v26").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v27").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=26").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=27").catch(() => {});
     });
   }
 
