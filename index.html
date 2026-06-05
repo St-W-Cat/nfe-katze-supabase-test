@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version30 -->
+  <!-- Version: supabase-version31 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v30 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v31 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -2075,14 +2075,40 @@
     renderFoods();
   }
 
+  function foodMatchesSearchTerm(item, term) {
+    const search = String(term || "").toLocaleLowerCase("de").trim();
+    if (!search) return true;
+    return [item?.brand, item?.sort, item?.packaging, item?.weight, item?.lifeAge]
+      .join(" ").toLocaleLowerCase("de").includes(search);
+  }
+  function keepSavedAdminFoodVisible(item) {
+    if (!isCurrentAdmin() || !item) return;
+    activeFoodFilter = "pool";
+    const searchBox = el("foodSearch");
+    const currentSearch = searchBox ? searchBox.value : "";
+    if (currentSearch && !foodMatchesSearchTerm(item, currentSearch)) {
+      // Wenn die Änderung den Suchtreffer verändert hat, wird die Suche geleert,
+      // damit der geänderte Eintrag sofort sichtbar ist und kein F5 nötig wird.
+      searchBox.value = "";
+    }
+  }
+
   async function ensureOptionValue(category, value) {
     const clean = normalizeOptionValue(value);
     if (!clean) return false;
-    if (await findExistingOptionValue(category, clean)) return false;
-    const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
+    const existing = await findAnyOptionValue(category, clean);
+    if (existing) {
+      if (existing.active === false) return await reactivateOptionValue(existing, clean);
+      return false;
+    }
+    const { error } = await sb.from("option_values").insert({ category, value: clean, active: true, created_by: currentUser?.email || "" });
     if (error) {
       const msg = String(error.message || "").toLowerCase();
-      if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) return false;
+      if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) {
+        const duplicate = await findAnyOptionValue(category, clean);
+        if (duplicate && duplicate.active === false) return await reactivateOptionValue(duplicate, clean);
+        return false;
+      }
       throw error;
     }
     return true;
@@ -2281,13 +2307,19 @@
         if (editingId && !forceNew) {
           const { data: savedRow, error } = await sb.from("food_pool").update(payload).eq("id", editingId).select("*").single();
           if (error) throw error;
-          if (savedRow) poolFoods = replaceLocalFood(poolFoods, { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id });
+          if (savedRow) {
+            const savedItem = { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id };
+            poolFoods = replaceLocalFood(poolFoods, savedItem);
+            keepSavedAdminFoodVisible(savedItem);
+          }
           showTimedMessage("notice", "Futterpool-Eintrag geändert.");
         } else {
           const { data: savedRow, error } = await sb.from("food_pool").insert(payload).select("*").single();
           if (error) throw error;
           if (savedRow) {
-            poolFoods = replaceLocalFood(poolFoods, { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id });
+            const savedItem = { ...dbFoodToApp(savedRow), favorite: poolFavoriteIds.has(String(savedRow.id)), poolId: savedRow.id };
+            poolFoods = replaceLocalFood(poolFoods, savedItem);
+            keepSavedAdminFoodVisible(savedItem);
             poolFoodsTotal = Math.max(poolFoodsTotal || 0, poolFoods.length);
           }
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
@@ -2812,6 +2844,27 @@
     return (data || []).find(row => String(row.id) !== String(excludeOptionId ?? "")
       && normalizeOptionValue(row.value).toLocaleLowerCase("de") === clean.toLocaleLowerCase("de")) || null;
   }
+  async function findAnyOptionValue(category, value, excludeOptionId = null) {
+    const clean = normalizeOptionValue(value);
+    if (!clean) return null;
+    const lower = clean.toLocaleLowerCase("de");
+    const local = optionRows.find(row => row.category === category
+      && String(row.id) !== String(excludeOptionId ?? "")
+      && normalizeOptionValue(row.value).toLocaleLowerCase("de") === lower);
+    if (local) return local;
+    const { data, error } = await sb.from("option_values").select("*").eq("category", category);
+    if (error) return null;
+    return (data || []).find(row => String(row.id) !== String(excludeOptionId ?? "")
+      && normalizeOptionValue(row.value).toLocaleLowerCase("de") === lower) || null;
+  }
+  async function reactivateOptionValue(row, value) {
+    if (!row?.id) return false;
+    const clean = normalizeOptionValue(value || row.value);
+    const { error } = await sb.from("option_values").update({ value: clean, active: true }).eq("id", row.id);
+    if (error) throw error;
+    await loadOptions();
+    return true;
+  }
   function poolColumnForOptionCategory(category) {
     return { brand: "brand", sort: "sort", packaging: "packaging", weight: "weight", life_age: "life_age" }[category] || null;
   }
@@ -2897,15 +2950,31 @@
   async function addOptionValue(category, value) {
     const clean = normalizeOptionValue(value);
     if (!clean) return false;
-    const existing = await findExistingOptionValue(category, clean);
+    const existing = await findAnyOptionValue(category, clean);
     if (existing) {
+      if (existing.active === false) {
+        try {
+          await reactivateOptionValue(existing, clean);
+          return true;
+        } catch (error) {
+          showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
+          return false;
+        }
+      }
       showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
       return false;
     }
-    const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
+    const { error } = await sb.from("option_values").insert({ category, value: clean, active: true, created_by: currentUser?.email || "" });
     if (error) {
       const msg = String(error.message || "").toLowerCase();
       if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) {
+        const duplicate = await findAnyOptionValue(category, clean);
+        if (duplicate && duplicate.active === false) {
+          try {
+            await reactivateOptionValue(duplicate, clean);
+            return true;
+          } catch (reactivateError) {}
+        }
         showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
       } else {
         showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
@@ -2978,6 +3047,7 @@
         const { error } = await sb.from("option_values").update({ active: false }).eq("id", row.id);
         if (error) { showTimedMessage("optionNotice", "Eintrag konnte nicht gelöscht werden."); return; }
         await loadOptions();
+        renderOptionsAdmin();
         await reloadFoodDataAndRender();
         showTimedMessage("optionNotice", "Eintrag gelöscht.");
       };
@@ -3298,20 +3368,40 @@
       list.appendChild(row);
     });
   }
+  async function finishPoolSuggestion(id, status) {
+    const patch = {
+      status,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: currentUser?.email || ""
+    };
+    const { error: updateError } = await sb.from("pool_suggestions").update(patch).eq("id", id);
+    if (updateError) throw updateError;
+    // Danach wird der Vorschlag zusätzlich gelöscht. Falls Supabase das Löschen nicht erlaubt,
+    // bleibt er wenigstens nicht mehr pending und taucht nicht erneut in der Liste auf.
+    await sb.from("pool_suggestions").delete().eq("id", id);
+    removePendingSuggestionLocal(id);
+    await loadPoolSuggestions();
+    await refreshPoolSuggestionCount();
+  }
+
   async function approvePoolSuggestion(id) {
-    const item = poolSuggestions.find(s => s.id === id);
+    const item = poolSuggestions.find(s => String(s.id) === String(id));
     if (!item) return;
     const kind = getPoolSuggestionKind(item);
-    const now = new Date().toISOString();
     try {
       if (kind === "option") {
         const category = item.option_category;
-        const value = item.option_value;
-        if (!(await findExistingOptionValue(category, value))) {
-          const { error } = await sb.from("option_values").insert({ category, value: normalizeOptionValue(value), created_by: currentUser.email });
-          if (error) {
-            const msg = String(error.message || "").toLowerCase();
-            if (!(msg.includes("duplicate") || msg.includes("option_values_unique_lower"))) throw error;
+        const value = normalizeOptionValue(item.option_value);
+        if (value) {
+          const existing = await findAnyOptionValue(category, value);
+          if (existing) {
+            if (existing.active === false) await reactivateOptionValue(existing, value);
+          } else {
+            const { error } = await sb.from("option_values").insert({ category, value, active: true, created_by: currentUser.email });
+            if (error) {
+              const msg = String(error.message || "").toLowerCase();
+              if (!(msg.includes("duplicate") || msg.includes("option_values_unique_lower"))) throw error;
+            }
           }
         }
       } else if (kind === "change") {
@@ -3330,7 +3420,8 @@
           nfe_dry: item.nfe_dry,
           rating_text: item.rating_text || "",
           rating_class: item.rating_class || "",
-          updated_by: currentUser.email
+          updated_by: currentUser.email,
+          active: true
         };
         const { error } = await sb.from("food_pool").update(payload).eq("id", item.target_pool_food_id);
         if (error) throw error;
@@ -3342,28 +3433,23 @@
         if (poolError) throw poolError;
       }
 
-      const { error: updateError } = await sb.from("pool_suggestions").update({ status: "approved", reviewed_at: now, reviewed_by: currentUser.email }).eq("id", id);
-      if (updateError) throw updateError;
-
+      await finishPoolSuggestion(id, "approved");
+      await Promise.all([loadOptions(), loadFoods(), loadPoolFavorites(), loadPoolFoods()]);
+      renderOptionsAdmin();
+      refreshFoodViews();
       showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
-      removePendingSuggestionLocal(id);
-      await Promise.all([loadOptions(), loadFoods(), loadPoolFavorites(), loadPoolFoods(), loadPoolSuggestions()]);
-      await refreshPoolSuggestionCount();
     } catch (error) {
-      showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
+      showTimedMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message, 5200);
     }
   }
   async function rejectPoolSuggestion(id) {
     if (!confirm("Vorschlag ablehnen und automatisch löschen?")) return;
-    const { error } = await sb.from("pool_suggestions").delete().eq("id", id);
-    if (error) {
-      showMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message);
-      return;
+    try {
+      await finishPoolSuggestion(id, "rejected");
+      showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
+    } catch (error) {
+      showTimedMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message, 5200);
     }
-    showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
-    removePendingSuggestionLocal(id);
-    await loadPoolSuggestions();
-    await refreshPoolSuggestionCount();
   }
 
   async function downloadFoodList() {
@@ -3518,13 +3604,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v30").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v31").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=30").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=31").catch(() => {});
     });
   }
 
