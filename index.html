@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version25 -->
+  <!-- Version: supabase-version30 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v28 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v30 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1835,45 +1835,6 @@
     if (!Number.isFinite(num)) return "–";
     return num.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-
-  function ratingFromDryNfe(nfeDry) {
-    const dry = Number(nfeDry);
-    if (!Number.isFinite(dry)) return { ratingText: "", ratingClass: "" };
-    // Bewertungsregel: Nur NfE Trockenmasse zählt. NfE normal ist nur Richtwert.
-    if (dry < 5) return { ratingText: "super", ratingClass: "good" };
-    if (dry < 10) return { ratingText: "geeignet", ratingClass: "mid" };
-    return { ratingText: "vermeiden", ratingClass: "high" };
-  }
-
-  function calculateFoodResultFromValues(values) {
-    const protein = Number(values?.protein ?? values?.rohprotein ?? 0);
-    const fett = Number(values?.fett ?? values?.fat ?? 0);
-    const faser = Number(values?.faser ?? values?.fiber ?? 0);
-    const asche = Number(values?.asche ?? values?.ash ?? 0);
-    const feuchte = Number(values?.feuchte ?? values?.moisture ?? 0);
-    const nfeFresh = 100 - protein - fett - faser - asche - feuchte;
-    const dryMass = 100 - feuchte;
-    const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
-    const rating = ratingFromDryNfe(nfeDry);
-    return { nfeFresh, nfeDry, ratingText: rating.ratingText, ratingClass: rating.ratingClass };
-  }
-
-  async function reloadAllVisibleData() {
-    // Zentrale Aktualisierung nach Speichern/Ändern/Löschen/Vorschlägen.
-    // Wichtig: nicht nur Zähler ändern, sondern alle sichtbaren Listen aus Supabase neu aufbauen.
-    if (!currentUser) return;
-    await loadOptions();
-    await loadPoolFavorites();
-    await loadFoods();
-    await loadPoolFoods();
-    await refreshPoolSuggestionCount();
-    if (el("poolSuggestionsOverlay")?.classList.contains("visible")) {
-      await loadPoolSuggestions();
-    }
-    updateFoodFilterLabels();
-    renderFoods();
-  }
-
   function dbFoodToApp(row) {
     return {
       id: row.id,
@@ -1890,13 +1851,12 @@
         asche: row.ash ?? 0,
         feuchte: row.moisture ?? 0
       },
-      result: calculateFoodResultFromValues({
-        protein: row.protein ?? 0,
-        fett: row.fat ?? 0,
-        faser: row.fiber ?? 0,
-        asche: row.ash ?? 0,
-        feuchte: row.moisture ?? 0
-      }),
+      result: {
+        nfeFresh: row.nfe_fresh ?? 0,
+        nfeDry: row.nfe_dry ?? 0,
+        ratingText: row.rating_text || "",
+        ratingClass: row.rating_class || ""
+      },
       sourceFoodId: row.admin_food_id || row.id,
       _db: row
     };
@@ -1925,28 +1885,24 @@
   function normalizeFoodKey(value) {
     return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
   }
-  function sameFoodText(a, b) {
-    return normalizeFoodKey(a) === normalizeFoodKey(b);
-  }
-  function sameFoodNumber(a, b) {
-    const na = Number(String(a ?? 0).replace(",", "."));
-    const nb = Number(String(b ?? 0).replace(",", "."));
-    if (!Number.isFinite(na) && !Number.isFinite(nb)) return true;
-    return Math.abs((Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)) < 0.0001;
+  function normalizeFoodNumber(value) {
+    const raw = String(value ?? "").trim().replace(",", ".");
+    const num = Number(raw);
+    return Number.isFinite(num) ? Math.round(num * 100000) / 100000 : 0;
   }
   function sameFoodIdentity(a, b) {
-    // Duplikat nur, wenn wirklich der gesamte Datensatz gleich ist.
-    // Unterschiedliche Verpackung/Gewicht/Werte dürfen als neues Futter gespeichert werden.
-    return sameFoodText(a?.brand, b?.brand)
-      && sameFoodText(a?.sort, b?.sort)
-      && sameFoodText(a?.packaging, b?.packaging)
-      && sameFoodText(a?.weight, b?.weight)
-      && sameFoodText(a?.lifeAge, b?.lifeAge)
-      && sameFoodNumber(a?.values?.protein, b?.values?.protein)
-      && sameFoodNumber(a?.values?.fett, b?.values?.fett)
-      && sameFoodNumber(a?.values?.faser, b?.values?.faser)
-      && sameFoodNumber(a?.values?.asche, b?.values?.asche)
-      && sameFoodNumber(a?.values?.feuchte, b?.values?.feuchte)
+    // Duplikat nur, wenn der gesamte relevante Datensatz gleich ist.
+    // Eine andere Verpackung, anderes Gewicht oder andere Analysewerte dürfen als neues Futter gespeichert werden.
+    return normalizeFoodKey(a?.brand) === normalizeFoodKey(b?.brand)
+      && normalizeFoodKey(a?.sort) === normalizeFoodKey(b?.sort)
+      && normalizeFoodKey(a?.packaging) === normalizeFoodKey(b?.packaging)
+      && normalizeFoodKey(a?.weight) === normalizeFoodKey(b?.weight)
+      && normalizeFoodKey(a?.lifeAge) === normalizeFoodKey(b?.lifeAge)
+      && normalizeFoodNumber(a?.values?.protein) === normalizeFoodNumber(b?.values?.protein)
+      && normalizeFoodNumber(a?.values?.fett) === normalizeFoodNumber(b?.values?.fett)
+      && normalizeFoodNumber(a?.values?.faser) === normalizeFoodNumber(b?.values?.faser)
+      && normalizeFoodNumber(a?.values?.asche) === normalizeFoodNumber(b?.values?.asche)
+      && normalizeFoodNumber(a?.values?.feuchte) === normalizeFoodNumber(b?.values?.feuchte)
       && normalizeFoodKey(a?.brand) !== "";
   }
   function hasDuplicateFoodInList(list, item, excludeId) {
@@ -2110,6 +2066,44 @@
     renderPoolSuggestionsAdmin();
   }
 
+  async function reloadFoodDataAndRender() {
+    // Zentrale Aktualisierung: nach Speichern/Ändern/Löschen/Favoriten/Vorschlägen
+    // werden die betroffenen Listen sofort neu aus Supabase gelesen und neu dargestellt.
+    await loadPoolFavorites();
+    await Promise.all([loadFoods(), loadPoolFoods()]);
+    updateFoodFilterLabels();
+    renderFoods();
+  }
+
+  async function ensureOptionValue(category, value) {
+    const clean = normalizeOptionValue(value);
+    if (!clean) return false;
+    if (await findExistingOptionValue(category, clean)) return false;
+    const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
+    if (error) {
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) return false;
+      throw error;
+    }
+    return true;
+  }
+
+  async function ensureOptionsForFood(item) {
+    if (!isCurrentAdmin()) return;
+    const pairs = [
+      ["brand", item.brand],
+      ["sort", item.sort],
+      ["packaging", item.packaging],
+      ["weight", item.weight],
+      ["life_age", item.lifeAge]
+    ];
+    let changed = false;
+    for (const [category, value] of pairs) {
+      if (await ensureOptionValue(category, value)) changed = true;
+    }
+    if (changed) await loadOptions();
+  }
+
   function ratingPawSvg() {
     // Katzenpfote: 4 Zehen + 1 weicher Ballen, wie in der freigegebenen Vorschau.
     return '<svg class="paw" viewBox="0 0 64 64" aria-hidden="true" focusable="false">'
@@ -2207,9 +2201,19 @@
     const dryMass = 100 - feuchte;
     const nfeDry = dryMass > 0 ? (nfeFresh / dryMass) * 100 : 0;
 
-    const rating = ratingFromDryNfe(nfeDry);
+    let ratingText = "super";
+    let ratingClass = "good";
+    // Bewertung erfolgt ausschließlich nach NfE-Wert Trockenmasse:
+    // unter 5 = super, 5 bis unter 10 = geeignet, ab 10 = vermeiden
+    if (nfeDry >= 10) {
+      ratingText = "vermeiden";
+      ratingClass = "high";
+    } else if (nfeDry >= 5) {
+      ratingText = "geeignet";
+      ratingClass = "mid";
+    }
 
-    renderResult({ protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText: rating.ratingText, ratingClass: rating.ratingClass });
+    renderResult({ protein, fett, faser, asche, feuchte, nfeFresh, nfeDry, ratingText, ratingClass });
 
     const saveCard = el("saveCard");
     if (saveCard) saveCard.classList.add("visible");
@@ -2252,28 +2256,6 @@
       }
     };
   }
-  async function ensureOptionValuesForAdminFood(item) {
-    if (!isCurrentAdmin()) return;
-    const pairs = [
-      ["brand", item.brand],
-      ["sort", item.sort],
-      ["packaging", item.packaging],
-      ["weight", item.weight],
-      ["life_age", item.lifeAge]
-    ];
-    for (const [category, value] of pairs) {
-      const clean = normalizeOptionValue(value);
-      if (!clean) continue;
-      if (await findExistingOptionValue(category, clean)) continue;
-      const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
-      if (error) {
-        const msg = String(error.message || "").toLowerCase();
-        if (!(msg.includes("duplicate") || msg.includes("option_values_unique_lower"))) throw error;
-      }
-    }
-    await loadOptions();
-  }
-
   async function saveFood() {
     await saveFoodInternal(false);
   }
@@ -2293,8 +2275,8 @@
           return;
         }
 
+        await ensureOptionsForFood(item);
         const payload = { ...appFoodToDb(item), updated_by: currentUser.email, active: true };
-        await ensureOptionValuesForAdminFood(item);
 
         if (editingId && !forceNew) {
           const { data: savedRow, error } = await sb.from("food_pool").update(payload).eq("id", editingId).select("*").single();
@@ -2311,8 +2293,9 @@
           showTimedMessage("notice", "Futterpool-Eintrag gespeichert.");
         }
 
-        await reloadAllVisibleData();
+        activeFoodFilter = "pool";
         resetFoodEditor();
+        await reloadFoodDataAndRender();
         return;
       }
 
@@ -2335,10 +2318,11 @@
       }
 
       showTimedMessage("notice", forceNew ? "Neues Futter gespeichert." : (editingId ? "Änderung gespeichert." : "Futter gespeichert."));
-      await reloadAllVisibleData();
+      activeFoodFilter = "all";
       resetFoodEditor();
+      await reloadFoodDataAndRender();
     } catch (error) {
-      showTimedMessage("notice", "Speichern fehlgeschlagen: " + error.message, 4200);
+      showMessage("notice", "Speichern fehlgeschlagen: " + error.message);
     }
   }
 
@@ -2425,21 +2409,21 @@
     el("packaging").value = item.packaging || "";
     el("weight").value = item.weight || "";
     el("lifeAge").value = item.lifeAge || "";
-    const recalculated = calculateFoodResultFromValues({
-      protein: item.values?.protein ?? 0,
-      fett: item.values?.fett ?? 0,
-      faser: item.values?.faser ?? 0,
-      asche: item.values?.asche ?? 0,
-      feuchte: item.values?.feuchte ?? 0
-    });
-    renderResult({
-      protein: Number(item.values?.protein ?? 0),
-      fett: Number(item.values?.fett ?? 0),
-      faser: Number(item.values?.faser ?? 0),
-      asche: Number(item.values?.asche ?? 0),
-      feuchte: Number(item.values?.feuchte ?? 0),
-      ...recalculated
-    });
+    if (item.result) {
+      renderResult({
+        protein: Number(item.values?.protein ?? 0),
+        fett: Number(item.values?.fett ?? 0),
+        faser: Number(item.values?.faser ?? 0),
+        asche: Number(item.values?.asche ?? 0),
+        feuchte: Number(item.values?.feuchte ?? 0),
+        nfeFresh: Number(item.result?.nfeFresh ?? 0),
+        nfeDry: Number(item.result?.nfeDry ?? 0),
+        ratingText: item.result?.ratingText || "",
+        ratingClass: item.result?.ratingClass || ""
+      });
+    } else {
+      calculate(false);
+    }
   }
   function clearField(id) {
     el(id).value = "";
@@ -2655,7 +2639,7 @@
       item.favorite = oldVal;
       updateFoodFilterLabels();
       renderFoods();
-      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", 4200);
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.");
     }
   }
 
@@ -2695,15 +2679,12 @@
       poolFoods = poolFoods.map(item => String(item.id) === favId ? { ...item, favorite: wasFavorite } : item);
       updateFoodFilterLabels();
       renderFoods();
-      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", 4200);
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.");
       return;
     }
 
     // Nachziehen, falls ein anderer Tab/Gerät parallel geändert hat.
-    loadPoolFavorites().then(() => {
-      updateFoodFilterLabels();
-      renderFoods();
-    }).catch(() => null);
+    reloadFoodDataAndRender().catch(() => null);
   }
   async function deleteFood(id) {
     if (!confirm("Futter wirklich löschen?")) return;
@@ -2719,8 +2700,9 @@
       poolFoods = poolFoods.filter(item => String(item.admin_food_id || "") !== String(id));
     }
     if (editingId === id) resetFoodEditor();
-    await reloadAllVisibleData();
+    refreshFoodViews();
     showTimedMessage("syncNotice", "Futter wurde gelöscht.");
+    await reloadFoodDataAndRender();
   }
   async function deletePoolFood(id) {
     if (!isCurrentAdmin()) return;
@@ -2734,8 +2716,9 @@
     poolFavoriteIds.delete(String(id));
     if (poolFoodsTotal > 0) poolFoodsTotal -= 1;
     if (editingId === id) resetFoodEditor();
-    await reloadAllVisibleData();
+    refreshFoodViews();
     showTimedMessage("syncNotice", "Pool-Futter wurde gelöscht.");
+    await reloadFoodDataAndRender();
   }
   function toggleFoodList() {
     const content = el("foodItemsContent");
@@ -2983,8 +2966,8 @@
         }
         try { await updatePoolValuesForOptionChange(row.category, oldValue, next); }
         catch (poolError) { showTimedMessage("optionNotice", "Eintrag geändert, Pool konnte nicht vollständig aktualisiert werden."); }
-        await reloadAllVisibleData();
-        renderOptionsAdmin();
+        await Promise.all([loadOptions(), loadPoolFoods()]);
+        await reloadFoodDataAndRender();
         showTimedMessage("optionNotice", "Eintrag geändert.");
       };
       const del = document.createElement("button");
@@ -2995,6 +2978,7 @@
         const { error } = await sb.from("option_values").update({ active: false }).eq("id", row.id);
         if (error) { showTimedMessage("optionNotice", "Eintrag konnte nicht gelöscht werden."); return; }
         await loadOptions();
+        await reloadFoodDataAndRender();
         showTimedMessage("optionNotice", "Eintrag gelöscht.");
       };
       div.appendChild(text);
@@ -3031,7 +3015,7 @@
       return;
     }
     const optionCount = await createOptionSuggestionsForFood(item, "new_food");
-    showMessage("notice", optionCount ? "Futter wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Futter wurde als Pool-Vorschlag gesendet.");
+    showTimedMessage("notice", optionCount ? "Futter wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Futter wurde als Pool-Vorschlag gesendet.");
   }
   async function suggestPoolFoodChange() {
     if (!currentUser || isCurrentAdmin() || !selectedPoolFoodIdForChange) return;
@@ -3054,7 +3038,7 @@
       return;
     }
     const optionCount = await createOptionSuggestionsForFood(newItem, "change");
-    showMessage("notice", optionCount ? "Änderung wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Änderung wurde als Pool-Vorschlag gesendet.");
+    showTimedMessage("notice", optionCount ? "Änderung wurde vorgeschlagen. Zusätzlich wurden " + optionCount + " Listen-Vorschläge gesendet." : "Änderung wurde als Pool-Vorschlag gesendet.");
   }
 
   function openPrivacy() {
@@ -3352,6 +3336,7 @@
         if (error) throw error;
       } else {
         const food = dbFoodToApp(item);
+        await ensureOptionsForFood(food);
         const poolPayload = { ...appFoodToDb(food), active: true, updated_by: currentUser.email };
         const { error: poolError } = await sb.from("food_pool").insert(poolPayload);
         if (poolError) throw poolError;
@@ -3362,23 +3347,23 @@
 
       showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde freigegeben.");
       removePendingSuggestionLocal(id);
-      await reloadAllVisibleData();
-      await loadPoolSuggestions();
+      await Promise.all([loadOptions(), loadFoods(), loadPoolFavorites(), loadPoolFoods(), loadPoolSuggestions()]);
+      await refreshPoolSuggestionCount();
     } catch (error) {
-      showTimedMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message, 4200);
+      showMessage("poolSuggestionsNotice", "Freigabe fehlgeschlagen: " + error.message);
     }
   }
   async function rejectPoolSuggestion(id) {
     if (!confirm("Vorschlag ablehnen und automatisch löschen?")) return;
     const { error } = await sb.from("pool_suggestions").delete().eq("id", id);
     if (error) {
-      showTimedMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message, 4200);
+      showMessage("poolSuggestionsNotice", "Ablehnen fehlgeschlagen: " + error.message);
       return;
     }
     showTimedMessage("poolSuggestionsNotice", "Vorschlag wurde abgelehnt und gelöscht.");
     removePendingSuggestionLocal(id);
-    await refreshPoolSuggestionCount();
     await loadPoolSuggestions();
+    await refreshPoolSuggestionCount();
   }
 
   async function downloadFoodList() {
@@ -3533,13 +3518,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v28").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v30").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=28").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=30").catch(() => {});
     });
   }
 
