@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v27 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v28 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -1860,14 +1860,18 @@
 
   async function reloadAllVisibleData() {
     // Zentrale Aktualisierung nach Speichern/Ändern/Löschen/Vorschlägen.
-    // Dadurch ändern sich nicht nur die Zahlen, sondern auch die sichtbaren Listen.
+    // Wichtig: nicht nur Zähler ändern, sondern alle sichtbaren Listen aus Supabase neu aufbauen.
+    if (!currentUser) return;
     await loadOptions();
     await loadPoolFavorites();
     await loadFoods();
     await loadPoolFoods();
+    await refreshPoolSuggestionCount();
+    if (el("poolSuggestionsOverlay")?.classList.contains("visible")) {
+      await loadPoolSuggestions();
+    }
     updateFoodFilterLabels();
     renderFoods();
-    await refreshPoolSuggestionCount();
   }
 
   function dbFoodToApp(row) {
@@ -1921,16 +1925,34 @@
   function normalizeFoodKey(value) {
     return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
   }
+  function sameFoodText(a, b) {
+    return normalizeFoodKey(a) === normalizeFoodKey(b);
+  }
+  function sameFoodNumber(a, b) {
+    const na = Number(String(a ?? 0).replace(",", "."));
+    const nb = Number(String(b ?? 0).replace(",", "."));
+    if (!Number.isFinite(na) && !Number.isFinite(nb)) return true;
+    return Math.abs((Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)) < 0.0001;
+  }
   function sameFoodIdentity(a, b) {
-    return normalizeFoodKey(a?.brand) === normalizeFoodKey(b?.brand)
-      && normalizeFoodKey(a?.sort) === normalizeFoodKey(b?.sort)
+    // Duplikat nur, wenn wirklich der gesamte Datensatz gleich ist.
+    // Unterschiedliche Verpackung/Gewicht/Werte dürfen als neues Futter gespeichert werden.
+    return sameFoodText(a?.brand, b?.brand)
+      && sameFoodText(a?.sort, b?.sort)
+      && sameFoodText(a?.packaging, b?.packaging)
+      && sameFoodText(a?.weight, b?.weight)
+      && sameFoodText(a?.lifeAge, b?.lifeAge)
+      && sameFoodNumber(a?.values?.protein, b?.values?.protein)
+      && sameFoodNumber(a?.values?.fett, b?.values?.fett)
+      && sameFoodNumber(a?.values?.faser, b?.values?.faser)
+      && sameFoodNumber(a?.values?.asche, b?.values?.asche)
+      && sameFoodNumber(a?.values?.feuchte, b?.values?.feuchte)
       && normalizeFoodKey(a?.brand) !== "";
   }
   function hasDuplicateFoodInList(list, item, excludeId) {
     return (list || []).some(existing => {
-      if (!sameFoodIdentity(existing, item)) return false;
       if (excludeId && String(existing.id) === String(excludeId)) return false;
-      return true;
+      return sameFoodIdentity(existing, item);
     });
   }
 
@@ -2230,6 +2252,28 @@
       }
     };
   }
+  async function ensureOptionValuesForAdminFood(item) {
+    if (!isCurrentAdmin()) return;
+    const pairs = [
+      ["brand", item.brand],
+      ["sort", item.sort],
+      ["packaging", item.packaging],
+      ["weight", item.weight],
+      ["life_age", item.lifeAge]
+    ];
+    for (const [category, value] of pairs) {
+      const clean = normalizeOptionValue(value);
+      if (!clean) continue;
+      if (await findExistingOptionValue(category, clean)) continue;
+      const { error } = await sb.from("option_values").insert({ category, value: clean, created_by: currentUser?.email || "" });
+      if (error) {
+        const msg = String(error.message || "").toLowerCase();
+        if (!(msg.includes("duplicate") || msg.includes("option_values_unique_lower"))) throw error;
+      }
+    }
+    await loadOptions();
+  }
+
   async function saveFood() {
     await saveFoodInternal(false);
   }
@@ -2250,6 +2294,7 @@
         }
 
         const payload = { ...appFoodToDb(item), updated_by: currentUser.email, active: true };
+        await ensureOptionValuesForAdminFood(item);
 
         if (editingId && !forceNew) {
           const { data: savedRow, error } = await sb.from("food_pool").update(payload).eq("id", editingId).select("*").single();
@@ -2610,7 +2655,7 @@
       item.favorite = oldVal;
       updateFoodFilterLabels();
       renderFoods();
-      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", "error");
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", 4200);
     }
   }
 
@@ -2650,7 +2695,7 @@
       poolFoods = poolFoods.map(item => String(item.id) === favId ? { ...item, favorite: wasFavorite } : item);
       updateFoodFilterLabels();
       renderFoods();
-      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", "error");
+      showTimedMessage("syncNotice", "Favorit konnte nicht gespeichert werden.", 4200);
       return;
     }
 
@@ -3488,13 +3533,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v27").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v28").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=27").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=28").catch(() => {});
     });
   }
 
