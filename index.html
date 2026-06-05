@@ -13,7 +13,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Version: supabase-version31 -->
+  <!-- Version: supabase-version32 -->
   <style>
 
     :root {
@@ -1712,7 +1712,7 @@
     </section>
 
     </div>
-    <div class="version-note">Supabase v31 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
+    <div class="version-note">Supabase v32 · <button type="button" class="footer-privacy-link" onclick="openPrivacy()">Datenschutz</button></div>
   </main>
 
   
@@ -3021,16 +3021,47 @@
       edit.onclick = async () => {
         const next = normalizeOptionValue(prompt("Eintrag ändern:", row.value));
         if (!next) return;
-        const exists = await findExistingOptionValue(row.category, next, row.id);
-        if (exists) {
-          showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+        const oldValue = row.value;
+        const existingAny = await findAnyOptionValue(row.category, next, row.id);
+        if (existingAny) {
+          if (existingAny.active !== false) {
+            showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+            return;
+          }
+          try {
+            await updatePoolValuesForOptionChange(row.category, oldValue, next);
+            await sb.from("option_values").update({ active: true, value: next }).eq("id", existingAny.id);
+            await sb.from("option_values").update({ active: false }).eq("id", row.id);
+            await Promise.all([loadOptions(), loadPoolFoods()]);
+            await reloadFoodDataAndRender();
+            showTimedMessage("optionNotice", "Eintrag geändert.");
+          } catch (mergeError) {
+            showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
+          }
           return;
         }
-        const oldValue = row.value;
         const { error } = await sb.from("option_values").update({ value: next }).eq("id", row.id);
         if (error) {
           const msg = String(error.message || "").toLowerCase();
-          showTimedMessage("optionNotice", msg.includes("duplicate") || msg.includes("option_values_unique_lower") ? "Eintrag ist bereits vorhanden." : "Eintrag konnte nicht gespeichert werden.");
+          if (msg.includes("duplicate") || msg.includes("option_values_unique_lower")) {
+            const inactiveDuplicate = await findAnyOptionValue(row.category, next, row.id);
+            if (inactiveDuplicate && inactiveDuplicate.active === false) {
+              try {
+                await updatePoolValuesForOptionChange(row.category, oldValue, next);
+                await sb.from("option_values").update({ active: true, value: next }).eq("id", inactiveDuplicate.id);
+                await sb.from("option_values").update({ active: false }).eq("id", row.id);
+                await Promise.all([loadOptions(), loadPoolFoods()]);
+                await reloadFoodDataAndRender();
+                showTimedMessage("optionNotice", "Eintrag geändert.");
+              } catch (mergeError) {
+                showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
+              }
+            } else {
+              showTimedMessage("optionNotice", "Eintrag ist bereits vorhanden.");
+            }
+          } else {
+            showTimedMessage("optionNotice", "Eintrag konnte nicht gespeichert werden.");
+          }
           return;
         }
         try { await updatePoolValuesForOptionChange(row.category, oldValue, next); }
@@ -3604,13 +3635,13 @@
     // Noch neutrale Startanzeige
     setFoodFilter("all");
     if ("caches" in window) {
-      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v31").forEach(key => caches.delete(key))).catch(() => {});
+      caches.keys().then(keys => keys.filter(key => key.startsWith("nfe-katze-") && key !== "nfe-katze-supabase-v32").forEach(key => caches.delete(key))).catch(() => {});
     }
   }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js?v=31").catch(() => {});
+      navigator.serviceWorker.register("service-worker.js?v=30").catch(() => {});
     });
   }
 
